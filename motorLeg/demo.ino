@@ -141,7 +141,7 @@ void sensorInit(){
 
 }
 /*
-* 传感器计数服务
+* 传感器计数服务初始化
 */
 void sensorTimerInit(){
   
