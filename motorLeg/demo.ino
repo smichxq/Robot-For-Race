@@ -71,4 +71,7 @@ void isr()
     MsTimer2::stop();
   }
   
+}//
+void test(){
+  
 }
