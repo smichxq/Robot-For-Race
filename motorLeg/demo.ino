@@ -6,10 +6,24 @@
 #define turnLeft 2
 #define turnRight 3
 
-//传感器外部中断接口
+/*
+* 传感器外部中断接口
+* 每一侧的两边接中断接口
+* 该中断接口用来方格修正
+*/
 #define Isrpin0 2
 #define Isrpin1 3
+
+
+
+//取物时中断引脚,用来使车辆走在中心
 #define Isrpin2 21
+#define Inrpin3 20
+
+
+
+//传感器普通接口
+#define SensorPin 
 
 //电机接口
 #define MotorPin1 A0
@@ -94,10 +108,10 @@ LobotServoController myse(Serial3);//舵机控制
 
 void setup() {
   
-  pinMode(13,OUTPUT);
-  Serial3.begin(9600);
+  //pinMode(13,OUTPUT);
+  //Serial3.begin(9600);
   //while(!Serial3);
-  digitalWrite(13,HIGH);
+  //digitalWrite(13,HIGH);
   //angleTest();
 
 
@@ -141,14 +155,14 @@ char* getTarget(){
 * 开启计数中断
 */
 void sensorInit(){
-  Serial.begin(9600);
+  //Serial.begin(9600);
   pinMode(Isrpin0, INPUT);
   pinMode(Isrpin1, INPUT);
   //中间引脚
   pinMode(Isrpin2, INPUT);
 
 /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!一旦進入中断程序 就會自動禁止中斷服务!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
-  //当int.N电平时,升高时触发中断函数blink,
+  //当int.N电平时,升高时触发中断函数blink,2号引脚 3号引脚
   attachInterrupt(0, isr0, FALLING);
   attachInterrupt(1, isr1, FALLING);
   //设置中断服务,每1ms运行一次,使用time2的tick
@@ -559,7 +573,7 @@ void pathPlan(){
 */
 
 void stateFix(){
-  
+
 
 } 
 
