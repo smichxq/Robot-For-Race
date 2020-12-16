@@ -51,11 +51,6 @@
 #define P 1
 #define N 2
 
-/*=====================声明一个全局的任务序列missions[N]=================*/
-
-missions currentMissions[14];
-
-/*=====================声明一个全局的任务序列missions[N]=================*/
 
 
 //路径结构体
@@ -91,6 +86,13 @@ typedef struct missions
   bool flag;
   
 }missions;
+
+/*=====================声明一个全局的任务序列missions[N]=================*/
+
+missions currentMissions[14];
+
+/*=====================声明一个全局的任务序列missions[N]=================*/
+
 
 
 /*
@@ -313,7 +315,7 @@ void motorB2PNS(short mode)
 * 
 */
 
-void motorA1(short spd){
+short motorA1(short spd){
   if (spd<0)
   {
     analogWrite(MotorPin1,0);
@@ -328,7 +330,7 @@ void motorA1(short spd){
   }
   
 }
-void motorA2(short spd){
+short motorA2(short spd){
   if (spd<0)
   {
     analogWrite(MotorPin2,0);
@@ -343,7 +345,7 @@ void motorA2(short spd){
   }
   
 }
-void motorB1(short spd){
+short motorB1(short spd){
   if (spd<0)
   {
     analogWrite(MotorPin3,0);
@@ -358,7 +360,7 @@ void motorB1(short spd){
   }
   
 }
-void motorB2(short spd){
+short motorB2(short spd){
   if (spd<0)
   {
     analogWrite(MotorPin4,0);
@@ -391,16 +393,61 @@ void directions(short dirct,short spd){
     {
     case goStraight:
         //printf("goStraight\n");
+        motorA1PNS(P);
+        motorA1(spd);
+
+        motorA2PNS(P);
+        motorA2(spd);
+
+        motorB1PNS(P);
+        motorB1(spd);
+
+        motorB2PNS(P);
+        motorB2(spd);
         
         break;
     case goBack:
         //printf("goBack\n");
+        motorA1PNS(N);
+        motorA1(spd);
+
+        motorA2PNS(N);
+        motorA2(spd);
+
+        motorB1PNS(N);
+        motorB1(spd);
+
+        motorB2PNS(N);
+        motorB2(spd);
         break;
     case turnLeft:
         //printf("turnLeft\n");
+        motorA1PNS(N);
+        motorA1(spd);
+
+        motorA2PNS(P);
+        motorA2(spd);
+
+        motorB1PNS(P);
+        motorB1(spd);
+
+        motorB2PNS(N);
+        motorB2(spd);
+
         break;
     case turnRight:
         //printf("turnRight\n");
+        motorA1PNS(P);
+        motorA1(spd);
+
+        motorA2PNS(N);
+        motorA2(spd);
+
+        motorB1PNS(N);
+        motorB1(spd);
+
+        motorB2PNS(P);
+        motorB2(spd);
         break;
     }
   
@@ -561,6 +608,7 @@ void missionsInit(){
 * 
 */
 void pathPlan(){
+  
   
 
 }
