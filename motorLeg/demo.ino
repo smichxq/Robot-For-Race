@@ -12,18 +12,22 @@
 #define Isrpin2 21
 
 //电机接口
-#define MotorPin1 8
-#define Pin1Ain1 1
-#define Pin1Ain2 1
-#define MotorPin2 9
-#define Pin2Ain1 1
-#define Pin2Ain2 1
-#define MotorPin3 10
-#define Pin3Ain1 1
-#define Pin3Ain2 1
-#define MotorPin4 11
-#define Pin4Ain1 1
-#define Pin4Ain2 1
+#define MotorPin1 A0
+#define Motor1Ain1 A4
+#define Motor1Ain2 A5
+
+#define MotorPin2 A1
+#define Motor2Ain1 A6
+#define Motor2Ain2 A7
+
+#define MotorPin3 A2
+#define Motor3Ain1 A8
+#define Motor3Ain2 A9
+
+#define MotorPin4 A3
+#define Motor4Ain1 A10
+#define Motor4Ain2 A11
+
 /*
 * 电机旋转方向
 * S     P     N
@@ -40,7 +44,7 @@ missions currentMissions[14];
 /*=====================声明一个全局的任务序列missions[N]=================*/
 
 
-//任务结构体
+//路径结构体
 typedef struct mission
 {
   /*
@@ -107,6 +111,8 @@ void loop()
   
   
 }
+
+
 /*
 * 返回任务码
 *
@@ -145,8 +151,8 @@ void sensorInit(){
   //当int.N电平时,升高时触发中断函数blink,
   attachInterrupt(0, isr0, FALLING);
   attachInterrupt(1, isr1, FALLING);
-  //设置中断服务,每100ms运行一次,使用time2的tick
-  MsTimer2::set(10,count);
+  //设置中断服务,每1ms运行一次,使用time2的tick
+  MsTimer2::set(1,count);
 /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!一旦進入中断程序 就會自動禁止中斷服务!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 
 }
@@ -158,23 +164,50 @@ void sensorTimerInit(){
 }
 
 /*
+* 电机接口初始化
+*
+*
+*/
+
+void motorInit(){
+  pinMode(A4,OUTPUT);
+  pinMode(A5,OUTPUT);
+  pinMode(A6,OUTPUT);
+  pinMode(A7,OUTPUT);
+  pinMode(A8,OUTPUT);
+  pinMode(A9,OUTPUT);
+  pinMode(A10,OUTPUT);
+  pinMode(A11,OUTPUT);
+  
+}
+
+/*
 * 电机正反转控制
 *  P   N   S
 * 正  反  停
 */
-void motorPNS(short mode)
+
+
+//A1
+void motorA1PNS(short mode)
 {
+
   switch (mode)
   {
   case 0:
-    //printf("stop");
-    
+    //Serial.print("stop");
+    digitalWrite(Motor1Ain1,LOW);
+    digitalWrite(Motor1Ain2,LOW);
     break;
   case 1:
-    //printf("go Straight");
+    //Serial.print("go Straight");
+    digitalWrite(Motor1Ain1,HIGH);
+    digitalWrite(Motor1Ain2,LOW);
     break;
   case 2:
-    //printf("go back");
+    //Serial.print("go back");
+    digitalWrite(Motor1Ain1,LOW);
+    digitalWrite(Motor1Ain2,HIGH);
     break;
   
   default:
@@ -182,6 +215,82 @@ void motorPNS(short mode)
   }
 
 }
+void motorA2PNS(short mode)
+{
+  switch (mode)
+  {
+  case 0:
+    //Serial.print("stop");;
+    digitalWrite(Motor2Ain1,LOW);
+    digitalWrite(Motor2Ain2,LOW);
+    break;
+  case 1:
+    //Serial.print("go Straight");
+    digitalWrite(Motor2Ain1,HIGH);
+    digitalWrite(Motor2Ain2,LOW);
+    break;
+  case 2:
+    //Serial.print("go back");
+    digitalWrite(Motor2Ain1,LOW);
+    digitalWrite(Motor2Ain2,HIGH);
+    break;
+  
+  default:
+    break;
+  }
+
+}
+void motorB1PNS(short mode)
+{
+  switch (mode)
+  {
+  case 0:
+    //printf("stop");
+    digitalWrite(Motor3Ain1,LOW);
+    digitalWrite(Motor3Ain2,LOW);
+    break;
+  case 1:
+    //printf("go Straight");
+    digitalWrite(Motor3Ain1,HIGH);
+    digitalWrite(Motor3Ain2,LOW);
+    break;
+  case 2:
+    //printf("go back");
+    digitalWrite(Motor3Ain1,LOW);
+    digitalWrite(Motor3Ain2,HIGH);
+    break;
+  
+  default:
+    break;
+  }
+
+}
+void motorB2PNS(short mode)
+{
+  switch (mode)
+  {
+  case 0:
+    //printf("stop");
+    digitalWrite(Motor4Ain1,LOW);
+    digitalWrite(Motor4Ain2,LOW);
+    break;
+  case 1:
+    //printf("go Straight");
+    digitalWrite(Motor4Ain1,HIGH);
+    digitalWrite(Motor4Ain2,LOW);
+    break;
+  case 2:
+    //printf("go back");
+    digitalWrite(Motor4Ain1,LOW);
+    digitalWrite(Motor4Ain2,HIGH);
+    break;
+  
+  default:
+    break;
+  }
+
+}
+
 
 /*
 * 电机命令函数 
@@ -193,19 +302,63 @@ void motorPNS(short mode)
 void motorA1(short spd){
   if (spd<0)
   {
-    analogWrite(0);
+    analogWrite(MotorPin1,0);
   }
   else if(spd<255)
   {
-    analogWrite(spd);
+    analogWrite(MotorPin1,spd);
   }
   else
   {
-    analogWrite(255);
+    analogWrite(MotorPin1,255);
   }
   
 }
-
+void motorA2(short spd){
+  if (spd<0)
+  {
+    analogWrite(MotorPin2,0);
+  }
+  else if(spd<255)
+  {
+    analogWrite(MotorPin2,spd);
+  }
+  else
+  {
+    analogWrite(MotorPin2,255);
+  }
+  
+}
+void motorB1(short spd){
+  if (spd<0)
+  {
+    analogWrite(MotorPin3,0);
+  }
+  else if(spd<255)
+  {
+    analogWrite(MotorPin3,spd);
+  }
+  else
+  {
+    analogWrite(MotorPin3,255);
+  }
+  
+}
+void motorB2(short spd){
+  if (spd<0)
+  {
+    analogWrite(MotorPin4,0);
+  }
+  else if(spd<255)
+  {
+    analogWrite(MotorPin4,spd);
+  }
+  else
+  {
+    analogWrite(MotorPin4,255);
+  }
+  
+}
 
 /*
 * 电机移动命令
@@ -288,7 +441,7 @@ mission* createMissionList(short num,mission* missArry){
 
 
 /*
-* 功能: 遍历任务序列mission
+* 功能: 遍历路径序列mission
 * 
 *
 */
@@ -297,11 +450,11 @@ void traverseMission(){
   p = currentMissions[0].head;
   while (p)
   {
-    printf("%d  %d  %d \n",p->A,p->B,p->C);
+    //printf("%d  %d  %d \n",p->A,p->B,p->C);
+
     p = p->next;
 
   }
-
 
 }
 
@@ -311,7 +464,7 @@ void traverseMission(){
 * 参数: 无,使用全局变量任务序列
 */
 void missionsInit(){
-  //路径序列
+  //路径序列,每一个任务的路径,共有14个
   mission missionAry[12];
 
   mission* p = NULL;
@@ -372,14 +525,14 @@ void missionsInit(){
 
   //半成品区1
   currentMissions[10].head = createMissionList(12,missionAry);
-  currentMissions[10].flag = false;
+  currentMissions[10].flag = true;
   //半成品区2
   currentMissions[11].head = createMissionList(12,missionAry);
   currentMissions[11].flag = false;
 
   //终点区1
   currentMissions[12].head = createMissionList(12,missionAry);
-  currentMissions[12].flag = false;
+  currentMissions[12].flag = true;
   //终点区2
   currentMissions[13].head = createMissionList(12,missionAry);
   currentMissions[13].flag = false;
@@ -408,7 +561,7 @@ void pathPlan(){
 void stateFix(){
   
 
-}
+} 
 
 /*
 * 舵机角度标定
@@ -434,12 +587,12 @@ void angleTest(){
 /*
  * MsTimer(N)
  * 定时中断函数
- * 如果影响,
+ * 如果影响,使用原生计时器
  * 用来计数
  */
 void count(){
-  Serial.println(tm++);
-  //tm++;
+  //Serial.println(tm++);
+  tm++;
 }
 
 
