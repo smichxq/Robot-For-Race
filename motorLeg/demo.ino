@@ -67,7 +67,10 @@ typedef struct missions
   //每一个任务具体任务指针,无头节点
   mission* head;
   //任务序列指针域
-  struct missions* next;
+  //struct missions* next;
+
+  //多路径区分 默认为true
+  bool flag;
   
 }missions;
 
@@ -325,47 +328,63 @@ void missionsInit(){
 
   //扫码
   currentMissions[0].head = createMissionList(12,missionAry);
+  currentMissions[0].flag = true;
 
 
   //原料区1
   currentMissions[1].head = createMissionList(12,missionAry);
+  currentMissions[1].flag = true;
 
 
   //粗加工区1
   currentMissions[2].head = createMissionList(12,missionAry);
+  currentMissions[2].flag = true;
   //粗加工区2
   currentMissions[3].head = createMissionList(12,missionAry);
+  currentMissions[3].flag = false;
 
 
   //半成品区1
   currentMissions[4].head = createMissionList(12,missionAry);
+  currentMissions[4].flag = true;
   //半成品区2
   currentMissions[5].head = createMissionList(12,missionAry);
+  currentMissions[5].flag = false;
 
 
   //原料区1
   currentMissions[6].head = createMissionList(12,missionAry);
+  currentMissions[6].flag = true;
   //原料区2
   currentMissions[7].head = createMissionList(12,missionAry);
+  currentMissions[7].flag = false;
 
 
 
   //粗加工区1
   currentMissions[8].head = createMissionList(12,missionAry);
+  currentMissions[8].flag = true;
   //粗加工区2
-  currentMissions[0].head = createMissionList(12,missionAry);
+  currentMissions[9].head = createMissionList(12,missionAry);
+  currentMissions[9].flag = false;
 
 
 
   //半成品区1
-  currentMissions[9].head = createMissionList(12,missionAry);
-  //
   currentMissions[10].head = createMissionList(12,missionAry);
+  currentMissions[10].flag = false;
+  //半成品区2
   currentMissions[11].head = createMissionList(12,missionAry);
-  currentMissions[12].head = createMissionList(12,missionAry);
-  currentMissions[13].head = createMissionList(12,missionAry);
+  currentMissions[11].flag = false;
 
-  
+  //终点区1
+  currentMissions[12].head = createMissionList(12,missionAry);
+  currentMissions[12].flag = false;
+  //终点区2
+  currentMissions[13].head = createMissionList(12,missionAry);
+  currentMissions[13].flag = false;
+
+
 }
 
 
