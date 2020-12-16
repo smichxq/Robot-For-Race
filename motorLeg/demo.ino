@@ -33,6 +33,13 @@
 #define P 1
 #define N 2
 
+/*=====================声明一个全局的任务序列missions[N]=================*/
+
+missions currentMissions[14];
+
+/*=====================声明一个全局的任务序列missions[N]=================*/
+
+
 //任务结构体
 typedef struct mission
 {
@@ -57,7 +64,7 @@ typedef struct mission
 //任务序列
 typedef struct missions
 {
-  //每一个任务具体链表头指针,无头节点
+  //每一个任务具体任务指针,无头节点
   mission* head;
   //任务序列指针域
   struct missions* next;
@@ -231,6 +238,136 @@ void directions(short dirct,short spd){
 }
 
 
+/*
+* 功能: 增加一个路径序列项
+* 参数: 任务结构体mission的每一项标记位
+*/
+mission* addMission(int a,int b,int c){
+  mission* currentMission = NULL;
+
+  currentMission = (mission*)malloc(sizeof(mission));
+
+  currentMission->A = a;
+  currentMission->B = b;
+  currentMission->C = c;
+
+  currentMission->next = NULL;
+
+  return currentMission;
+}
+
+/*
+* 功能: 合成一个路径序列,并返回该序列的头指针
+* 参数: 每个路径序列的数量 , 路径序列数组
+* 
+*/
+mission* createMissionList(short num,mission* missArry){
+  mission* head = NULL;
+  mission* p = NULL;
+  short flag = 1;
+  for (int i = 0; i < num; i++)
+  {
+    if (flag)
+    {
+      head = addMission(missArry[i].A,missArry[i].B,missArry[i].C);
+      p = head;
+      flag = 0;
+      continue;
+    }
+
+    p->next = addMission(missArry[i].A,missArry[i].B,missArry[i].C);
+    p = p->next;
+  }
+
+  return head;
+
+}
+
+
+/*
+* 功能: 遍历任务序列mission
+* 
+*
+*/
+void traverseMission(){
+  mission* p = NULL;
+  p = currentMissions[0].head;
+  while (p)
+  {
+    printf("%d  %d  %d \n",p->A,p->B,p->C);
+    p = p->next;
+
+  }
+
+
+}
+
+/*
+* 功能: 初始化任务序列
+* 将每一个任务的路径序列填入该函数
+* 参数: 无,使用全局变量任务序列
+*/
+void missionsInit(){
+  //路径序列
+  mission missionAry[12];
+
+  mission* p = NULL;
+
+  for (int i = 0; i < 12; i++)
+  {
+    missionAry[i].A = i;
+    missionAry[i].B = i;
+    missionAry[i].C = i;
+  }
+
+  //任务序列
+
+
+  //扫码
+  currentMissions[0].head = createMissionList(12,missionAry);
+
+
+  //原料区1
+  currentMissions[1].head = createMissionList(12,missionAry);
+
+
+  //粗加工区1
+  currentMissions[2].head = createMissionList(12,missionAry);
+  //粗加工区2
+  currentMissions[3].head = createMissionList(12,missionAry);
+
+
+  //半成品区1
+  currentMissions[4].head = createMissionList(12,missionAry);
+  //半成品区2
+  currentMissions[5].head = createMissionList(12,missionAry);
+
+
+  //原料区1
+  currentMissions[6].head = createMissionList(12,missionAry);
+  //原料区2
+  currentMissions[7].head = createMissionList(12,missionAry);
+
+
+
+  //粗加工区1
+  currentMissions[8].head = createMissionList(12,missionAry);
+  //粗加工区2
+  currentMissions[0].head = createMissionList(12,missionAry);
+
+
+
+  //半成品区1
+  currentMissions[9].head = createMissionList(12,missionAry);
+  //
+  currentMissions[10].head = createMissionList(12,missionAry);
+  currentMissions[11].head = createMissionList(12,missionAry);
+  currentMissions[12].head = createMissionList(12,missionAry);
+  currentMissions[13].head = createMissionList(12,missionAry);
+
+  
+}
+
 
 /*
 * 路径规划
@@ -302,3 +439,4 @@ void isr0()
   MsTimer2::start();
 
 }
+
