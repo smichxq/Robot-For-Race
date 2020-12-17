@@ -6,17 +6,17 @@
 #define turnLeft 2
 #define turnRight 3
 
+//当前方向
+short currentState;
+
 /*
 * 传感器外部中断接口
-* 每一侧的两边接中断接口
-* 该中断接口用来方格修正
+* 每一侧的两边传感器接中断接口
+* 用来方格修正
 */
 #define Isrpin0 2
 #define Isrpin1 3
 
-
-
-//取物时中断引脚,用来使车辆走在中心
 #define Isrpin2 21
 #define Inrpin3 20
 
@@ -27,20 +27,20 @@
 
 //电机接口
 #define MotorPin1 A0
-#define Motor1Ain1 A4
-#define Motor1Ain2 A5
+#define Motor1Ain2 A1
+#define Motor1Ain1 A2
 
-#define MotorPin2 A1
-#define Motor2Ain1 A6
-#define Motor2Ain2 A7
+#define MotorPin2 A5
+#define Motor2Ain1 A3
+#define Motor2Ain2 A4
 
-#define MotorPin3 A2
+#define MotorPin3 A6
 #define Motor3Ain1 A8
-#define Motor3Ain2 A9
+#define Motor3Ain2 A7
 
-#define MotorPin4 A3
-#define Motor4Ain1 A10
-#define Motor4Ain2 A11
+#define MotorPin4 A11
+#define Motor4Ain1 A9
+#define Motor4Ain2 A10
 
 /*
 * 电机旋转方向
@@ -103,7 +103,27 @@ missions currentMissions[14];
 
 long tm = 0;//时间变量,用来计时
 
-boolean flag = true;//标记位,用来开启与关闭MsTimer2中断服务
+boolean is1 = true;//标记位,用来判定是哪一侧先触线
+
+//朝向左侧传感器
+short is2;
+//朝向右侧传感器
+short is3;
+
+
+//朝向左侧传感器
+short is20;
+//朝向右侧传感器
+short is21;
+//全局速度变量
+short spdA1 = 0;
+short spdA1Count = 0;
+short spdA2 = 0;
+short spdA2Count = 0;
+short spdB1 = 0;
+short spdB1Count = 0;
+short spdB2 = 0;
+short spdB2Count = 0;
 
 
 LobotServoController myse(Serial3);//舵机控制
@@ -118,7 +138,7 @@ void setup() {
 
 
   //传感器初始化
-  sensorInit();
+  //sensorInit();
 
 
 }  
@@ -152,30 +172,42 @@ char* getTarget(){
 }
 /* 
 * 传感器初始化
-* 初始化支持外中断引脚位输入模式
+* 初始化支持外中断引脚为输入模式
 * 设定外部中断服务
 * 开启计数中断
 */
 void sensorInit(){
   //Serial.begin(9600);
+
+
+  //第一组传感器中断引脚
   pinMode(Isrpin0, INPUT);
   pinMode(Isrpin1, INPUT);
-  //中间引脚
-  pinMode(Isrpin2, INPUT);
 
-/*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!一旦進入中断程序 就會自動禁止中斷服务!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
-  //当int.N电平时,升高时触发中断函数blink,2号引脚 3号引脚
-  attachInterrupt(0, isr0, FALLING);
-  attachInterrupt(1, isr1, FALLING);
-  //设置中断服务,每1ms运行一次,使用time2的tick
-  MsTimer2::set(1,count);
-/*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!一旦進入中断程序 就會自動禁止中斷服务!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
+  //第二组传感器中断引脚
+  pinMode(Isrpin2, INPUT);
+  pinMode(Inrpin3, INPUT);
+
+
+
 
 }
 /*
 * 传感器计数服务初始化
 */
 void sensorTimerInit(){
+
+  /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!一旦進入中断程序 就會自動禁止中斷服务!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
+  //当int.N电平时,升高时触发中断函数blink,2号引脚 3号引脚
+  attachInterrupt(0, isr0, FALLING);
+  attachInterrupt(1, isr1, FALLING);
+
+  //当int.N电平时,升高时触发中断函数blink,2号引脚 3号引脚
+  attachInterrupt(2, isr2, FALLING);
+  attachInterrupt(3, isr3, FALLING);
+  //设置中断服务,每1ms运行一次,使用c的tick
+  MsTimer2::set(1,count);
+/*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!一旦進入中断程序 就會自動禁止中斷服务!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
   
 }
 
@@ -315,14 +347,14 @@ void motorB2PNS(short mode)
 * 
 */
 
-short motorA1(short spd){
-  if (spd<0)
+void motorA1(){
+  if (spdA1<0)
   {
     analogWrite(MotorPin1,0);
   }
-  else if(spd<255)
+  else if(spdA1<255)
   {
-    analogWrite(MotorPin1,spd);
+    analogWrite(MotorPin1,spdA1);
   }
   else
   {
@@ -330,14 +362,14 @@ short motorA1(short spd){
   }
   
 }
-short motorA2(short spd){
-  if (spd<0)
+void motorA2(){
+  if (spdA2<0)
   {
     analogWrite(MotorPin2,0);
   }
   else if(spd<255)
   {
-    analogWrite(MotorPin2,spd);
+    analogWrite(MotorPin2,spdA2);
   }
   else
   {
@@ -345,14 +377,14 @@ short motorA2(short spd){
   }
   
 }
-short motorB1(short spd){
-  if (spd<0)
+void motorB1(){
+  if (spdB1<0)
   {
     analogWrite(MotorPin3,0);
   }
-  else if(spd<255)
+  else if(spdB1<255)
   {
-    analogWrite(MotorPin3,spd);
+    analogWrite(MotorPin3,spdB1);
   }
   else
   {
@@ -360,14 +392,14 @@ short motorB1(short spd){
   }
   
 }
-short motorB2(short spd){
-  if (spd<0)
+void motorB2(){
+  if (spdB2<0)
   {
     analogWrite(MotorPin4,0);
   }
-  else if(spd<255)
+  else if(spdB2<255)
   {
-    analogWrite(MotorPin4,spd);
+    analogWrite(MotorPin4,spdB2);
   }
   else
   {
@@ -387,67 +419,68 @@ short motorB2(short spd){
 * 目前只有四个方向
 * 后期增加其他方向
 */
-void directions(short dirct,short spd){
+void directions(short dirct){
+  currentState = dirct;
 
     switch (dirct)
     {
     case goStraight:
         //printf("goStraight\n");
         motorA1PNS(P);
-        motorA1(spd);
+        motorA1();
 
         motorA2PNS(P);
-        motorA2(spd);
+        motorA2();
 
         motorB1PNS(P);
-        motorB1(spd);
+        motorB1();
 
         motorB2PNS(P);
-        motorB2(spd);
+        motorB2();
         
         break;
     case goBack:
         //printf("goBack\n");
         motorA1PNS(N);
-        motorA1(spd);
+        motorA1();
 
         motorA2PNS(N);
-        motorA2(spd);
+        motorA2();
 
         motorB1PNS(N);
-        motorB1(spd);
+        motorB1();
 
         motorB2PNS(N);
-        motorB2(spd);
+        motorB2();
         break;
     case turnLeft:
         //printf("turnLeft\n");
         motorA1PNS(N);
-        motorA1(spd);
+        motorA1();
 
         motorA2PNS(P);
-        motorA2(spd);
+        motorA2();
 
         motorB1PNS(P);
-        motorB1(spd);
+        motorB1();
 
         motorB2PNS(N);
-        motorB2(spd);
+        motorB2();
 
         break;
     case turnRight:
         //printf("turnRight\n");
         motorA1PNS(P);
-        motorA1(spd);
+        motorA1();
 
         motorA2PNS(N);
-        motorA2(spd);
+        motorA2();
 
         motorB1PNS(N);
-        motorB1(spd);
+        motorB1();
 
         motorB2PNS(P);
-        motorB2(spd);
+        motorB2();
         break;
     }
   
@@ -607,9 +640,10 @@ void missionsInit(){
 * 规划当前方向
 * 
 */
-void pathPlan(){
-  
-  
+void pathPlan()
+{
+
+
 
 }
 
@@ -620,7 +654,92 @@ void pathPlan(){
 * 使用定时中断
 */
 
-void stateFix(){
+void stateFix()
+{
+  //传感器正常情况下是1 遇到黑色为0
+
+  //朝向左侧传感器
+  is2 = digitalRead(2);
+  //朝向右侧传感器
+  is3 = digitalRead(3);
+  
+  
+
+  //朝向左侧传感器
+  is20 = digitalRead(20);
+  //朝向右侧传感器
+  is21 = digitalRead(21);
+  
+
+if (currentState == goStraight || currentState == goBack)
+{
+  /* code */
+
+
+  //如果当前朝向偏右(左侧先触碰)
+  if (!is20 &&  is21)
+  {
+    //short diff;
+    
+    spdA2 += 2;
+
+    //spdA2Count++;
+    
+  }
+
+  //如果当前朝向偏右(右侧先触碰)
+  if (!is21 && is20)
+  {
+    spdA1 += 2;
+  }
+  
+  //如果位置纠正了
+  if (!is20 && !is21)
+  {
+    //速度恢复
+    spdA2 = spdA1;
+
+    //spdA2Count = 0;
+  }
+
+
+}
+
+if (currentState == turnLeft || currentState == turnRight)
+{
+  
+    //如果当前朝向偏右(左侧先触)
+  if (!is2 &&  is3)
+  {
+    //short diff;
+    
+    spdA1 += 2;
+
+    //spdA2Count++;
+    
+  }
+  //如果当前朝向偏左(右侧先触)
+  if (!is3 && is2)
+  {
+    
+  }
+  
+
+
+  //如果位置纠正了,或者同时触碰
+  if (!is2 && !is3)
+  {
+    //速度恢复
+    spdA2 = spdA1;
+
+    //spdA2Count = 0;
+  }
+
+
+}
+
+  
+  
 
 
 } 
@@ -659,18 +778,41 @@ void count(){
 
 
 /*
- * 外部中断函数isr0~2
+ * 第一组外部中断函数isr0~2
  * 只运行一次
  * 用来触发定时中断
  */
-void isr1(){
-  MsTimer2::stop();
+void isr1()
+{
+  //如果是位置为1的传感器,
+  if (is2)
+  {
+    MsTimer2::stop();
+    return;
+  }
+
+  if (is3)
+  {
+    /* code */
+  }
+  
+
+  MsTimer2::start();
+
 }
 
 
 void isr0()
 {
-  MsTimer2::start();
+  //如果是位置为1的传感器
+  if (is1)
+  {
+    MsTimer2::start();
+    return;
+  }
+
+  MsTimer2::stop();
 
 }
+
 
