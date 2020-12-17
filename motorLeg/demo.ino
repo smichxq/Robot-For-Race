@@ -669,14 +669,170 @@ void stateFix()
   is20 = digitalRead(20);
   //朝向右侧传感器
   is21 = digitalRead(21);
+
+
+
+  switch (currentState)
+  {
+  case goStraight:
+    //当前方向 偏右(左侧先触碰)
+    /*
+    20  21
+    1    1
+    0    1
+    0    0<-这一状态可能要加入调整
+    1    1
+    */
+    
+
+    if (!is20 &&  is21)
+    {
+      //short diff;
+      
+      spdA2 += 2;
+
+      //spdA2Count++;
+      
+    }
+
+    //如果方向为goStraight 偏左(右侧先触碰)
+
+    /*
+    20  21
+    1    1
+    1    0
+    0    0<-这一状态可能要加入调整
+    1    1
+    */
+    if (!is21 &&  is20)
+    {
+      //short diff;
+      
+      spdA1 += 2;
+
+      //spdA2Count++;
+      
+    }
+
+
+    //恢复正常
+    if (is21 && is20)
+    {
+      spdA1 = spdA2 = spdB1;
+    }
+    
+    break;
+  case goBack:
+    //当前方向偏右(左侧先触)
+    /*
+    20  21
+    1    1
+    0    1
+    0    0
+    1    1
+    */
+
+   if (!is20 && is21)
+   {
+     spdB1 += 2;
+   }
+
+   //当前方向偏左(右侧先触)
+    /*
+    20  21
+    1    1
+    1    0
+    0    0<-这一状态可能要加入调整
+    1    1
+    */
+   if (!is21 && is20)
+   {
+     spdB2 += 2;
+   }
+
+   //恢复正常
+   if (is20 && is21)
+   {
+     spdB1 = spdB2 = spdA2;
+   }
+
+    break;
+  case turnLeft:
+    //当前方向偏左(右侧先触)
+    /*
+    2    3
+    1    1
+    1    0
+    0    0<-这一状态可能要加入调整
+    1    1
+    */
+
+   if (!is3 && is2)
+   {
+     spdB1 += 2;
+   }
+
+   //当前方向偏右(左侧先触)
+    /*
+    2    3
+    1    1
+    0    1
+    0    0<-这一状态可能要加入调整
+    1    1
+    */
+   if (!is2 && is3)
+   {
+     spdA1 += 2;
+   }
+
+   //恢复正常
+   if (is2 && is3)
+   {
+     spdA1 = spdB1 = spdA2;
+   }
+    
+    break;
+  case turnRight:
+    //当前方向偏右(左侧先触)
+    /*
+    2    3
+    1    1
+    0    1
+    0    0<-这一状态可能要加入调整
+    1    1
+    */
+
+   if (!is2 && is3)
+   {
+     spdB2 += 2;
+   }
+
+   //当前方向偏左(右侧先触)
+    /*
+    2    3
+    1    1
+    1    0
+    0    0<-这一状态可能要加入调整
+    1    1
+    */
+   if (!is3 && is2)
+   {
+     spdA2 += 2;
+   }
+
+   if (is2 && is3)
+   {
+     spdA2 = spdB2 = spdB1;
+   }
+   
+    break;
   
-
-if (currentState == goStraight || currentState == goBack)
-{
-  /* code */
-
-
-  //如果当前朝向偏右(左侧先触碰)
+  default:
+    break;
+  }
+/*=============================早期版本可能后期会有用========================*/
+/*
+  //如果方向为goStraight 偏右(左侧先触碰)
   if (!is20 &&  is21)
   {
     //short diff;
@@ -687,7 +843,7 @@ if (currentState == goStraight || currentState == goBack)
     
   }
 
-  //如果当前朝向偏右(右侧先触碰)
+  //如果当前朝向偏左(右侧先触碰)
   if (!is21 && is20)
   {
     spdA1 += 2;
@@ -703,7 +859,7 @@ if (currentState == goStraight || currentState == goBack)
   }
 
 
-}
+
 
 if (currentState == turnLeft || currentState == turnRight)
 {
@@ -734,7 +890,7 @@ if (currentState == turnLeft || currentState == turnRight)
 
     //spdA2Count = 0;
   }
-
+*/
 
 }
 
