@@ -339,6 +339,21 @@ void motorB2PNS(short mode)
 
 }
 
+/*
+* 速度函数
+*/
+void spdA1(short spd){
+  spdA1 = spd;
+}
+void spdA2(short spd){
+  spdA2 = spd;
+}
+void spdB1(short spd){
+  spdB1 = spd;
+}
+void spdB2(short spd){
+  spdB2 = spd;
+}
 
 /*
 * 电机命令函数 
@@ -649,7 +664,7 @@ void pathPlan()
 
 /*
 * 偏移检测
-* 根据时间来确定偏移度
+* 根据时间来确定偏移度(已弃用，外部中断引脚不够)
 * 对当前状态进行纠正
 * 使用定时中断
 */
