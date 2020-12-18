@@ -14,6 +14,7 @@ short currentState;
 * 每一侧的两边传感器接中断接口
 * 用来方格修正
 */
+
 #define Isrpin0 2
 #define Isrpin1 3
 
@@ -22,8 +23,11 @@ short currentState;
 
 
 
-//传感器普通接口
-#define SensorPin 
+//传感器普通(中间)接口
+#define SensorPinF A12 
+#define SensorPinR A13
+#define SensorPinB A14
+#define SensorPinL A15
 
 //电机接口
 #define MotorPin1 A0
@@ -108,7 +112,7 @@ mission* testMission;
 
 long tm = 0;//时间变量,用来计时
 
-boolean is1 = true;//标记位,用来判定是哪一侧先触线
+//boolean is1 = true;//标记位,用来判定是哪一侧先触线
 
 //朝向左侧传感器
 short is2;
@@ -120,6 +124,15 @@ short is3;
 short is20;
 //朝向右侧传感器
 short is21;
+
+//朝向右侧传感器
+short isA12_F_flag = 0;
+short isA13_R_flag = 0;
+short isA14_B_flag = 0;
+short isA15_L_flag = 0;
+
+
+
 //全局速度变量
 short spdA1 = 0;
 short spdA1Count = 0;
@@ -137,27 +150,21 @@ void setup() {
   //测试路径初始化
   test();
   Serial.begin(9600);
-  //pinMode(13,OUTPUT);
+  //pinMode(13,OUTPUT); 
   //Serial3.begin(9600);
   //while(!Serial3);
   //digitalWrite(13,HIGH);
   //angleTest();
   //传感器初始化
   //sensorInit();
-
+    MsTimer2::set(5,stateFix());
 
 }  
 void loop()
 {
-  mission* p = testMission;
 
-  while (p)
-  {
-    Serial.println(p->A + p->B + p->C);
-    p = p->next;
-    delay(1000);
-  }
   delay(1000000);
+
   /*
   双重遍历任务序列
   每遍历一次直到走完当前方格进行第二次遍历路径
@@ -205,8 +212,13 @@ void sensorInit(){
   pinMode(Isrpin2, INPUT);
   pinMode(Inrpin3, INPUT);
 
+  //前后中间传感器
+  pinMode(SensorPinF,INPUT);
+  pinMide(SensorPinB,INPUT);
 
-
+  //两侧中间
+  pinMode(SensorPinL,INPUT);
+  pinMode(SensorPinR,INPUT);
 
 }
 /*
@@ -359,16 +371,16 @@ void motorB2PNS(short mode)
 /*
 * 速度函数
 */
-void spdA1(short spd){
+void setSpdA1(short spd){
   spdA1 = spd;
 }
-void spdA2(short spd){
+void setSpdA2(short spd){
   spdA2 = spd;
 }
-void spdB1(short spd){
+void setSpdB1(short spd){
   spdB1 = spd;
 }
-void spdB2(short spd){
+void setSpdB2(short spd){
   spdB2 = spd;
 }
 
@@ -399,7 +411,7 @@ void motorA2(){
   {
     analogWrite(MotorPin2,0);
   }
-  else if(spd<255)
+  else if(spdA2<255)
   {
     analogWrite(MotorPin2,spdA2);
   }
@@ -451,8 +463,8 @@ void motorB2(){
 * 目前只有四个方向
 * 后期增加其他方向
 */
-void directions(short dirct){
-  currentState = dirct;
+void directions(){
+  short dirct = currentState;
 
     switch (dirct)
     {
@@ -516,7 +528,6 @@ void directions(short dirct){
         break;
     }
   
-
 }
 
 
@@ -525,7 +536,8 @@ void directions(short dirct){
 * 功能: 增加一个路径序列项
 * 参数: 任务结构体mission的每一项标记位
 */
-mission* addMission(int a,int b,int c){
+mission* addMission(int a,int b,int c)
+{
   mission* currentMission = NULL;
 
   currentMission = (mission*)malloc(sizeof(mission));
@@ -544,7 +556,8 @@ mission* addMission(int a,int b,int c){
 * 参数: 每个路径序列的数量 , 路径序列数组
 * 
 */
-mission* createMissionList(short num,mission* missArry){
+mission* createMissionList(short num,mission* missArry)
+{
   mission* head = NULL;
   mission* p = NULL;
   short flag = 1;
@@ -675,6 +688,117 @@ void missionsInit(){
 */
 void pathPlan()
 {
+  bool flagA = false;
+  bool flagB = false;
+  
+  //判断是否经过方格
+  isA12_F_flag = digitalRead(SensorPinF);
+  isA14_B_flag = digitalRead(SensorPinB);
+
+  isA15_L_flag = digitalRead(SensorPinL);
+  isA15_R_flag = digitalRead(SensorPinR);
+
+  mission* p = testMission;
+
+  //判断是否经过方格
+  switch (currentState)
+  {
+  case goStraight:
+    if (isA12_F_flag == 0)
+    {
+      flagA = true;
+    }
+    if (isA14_B_flag == 0)
+    {
+      flagB = true;
+    }
+    break;
+  case goBack:
+    if (isA14_B_flag == 0)
+    {
+      flagB = true;
+    }
+    if (isA12_F_flag == 0)
+    {
+      flagA = true;
+    }
+    break;
+
+  case turnLeft:
+    if (isA15_L_flag == 0)
+    {
+      flagA = true;
+    }
+    if (isA13_R_flag == 0)
+    {
+      flagB = true;
+    }
+    break;
+    
+    
+  case turnRight:
+    if (isA13_R_flag == 0)
+    {
+      flagA = true;
+    }
+    if (isA15_L_flag == 0)
+    {
+      flagB = true;
+    }
+    break;
+
+  default:
+    break;
+  }
+
+
+  //经过方格，移动到下一个路径
+  if (flagB && flagA)
+  {
+    p = p->next;
+    flagA = false;
+    flagB = false;
+  }
+  
+
+  
+  
+  
+
+  // while (p)
+  // {
+    //Serial.println(p->A + p->B + p->C);
+
+    //前
+    if (!(p->A) && !(p->B))
+    {
+      //更新当前方向
+      currentState = goStraight;
+      
+
+
+    }
+    //后
+    if (!(p->A) && p->B)
+    {
+      //更新当前方向
+      currentState = goBack;
+    }
+    //左
+    if (p->A && !(p->B))
+    {
+      //更新当前方向
+      currentState = turnLeft;
+    }
+    //右
+    if (p->A && p->B)
+    {
+      //更新当前方向
+      currentState = turnRight;
+    }
+
+    delay(1000);
+  // }
 
 
 
