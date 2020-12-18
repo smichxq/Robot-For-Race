@@ -93,6 +93,11 @@ missions currentMissions[14];
 
 /*=====================声明一个全局的任务序列missions[N]=================*/
 
+/*=====================测试路径==================*/
+
+mission* testMission;
+
+/*=====================测试路径==================*/
 
 
 /*
@@ -129,14 +134,14 @@ short spdB2Count = 0;
 LobotServoController myse(Serial3);//舵机控制
 
 void setup() {
-  
+  //测试路径初始化
+  test();
+  Serial.begin(9600);
   //pinMode(13,OUTPUT);
   //Serial3.begin(9600);
   //while(!Serial3);
   //digitalWrite(13,HIGH);
   //angleTest();
-
-
   //传感器初始化
   //sensorInit();
 
@@ -144,7 +149,19 @@ void setup() {
 }  
 void loop()
 {
-  
+  mission* p = testMission;
+
+  while (p)
+  {
+    Serial.println(p->A + p->B + p->C);
+    p = p->next;
+    delay(1000);
+  }
+  delay(1000000);
+  /*
+  双重遍历任务序列
+  每遍历一次直到走完当前方格进行第二次遍历路径
+  */
   
 }
 
@@ -503,6 +520,7 @@ void directions(short dirct){
 }
 
 
+
 /*
 * 功能: 增加一个路径序列项
 * 参数: 任务结构体mission的每一项标记位
@@ -661,6 +679,125 @@ void pathPlan()
 
 
 }
+
+/*
+* 路径序列测试函数
+* 将规划好的路径存入该函数
+*/
+
+void test(){
+  mission demo[21];
+
+  demo[0].A = true;
+  demo[0].B = false;
+  demo[0].C = false;
+
+  demo[1].A = true;
+  demo[1].B = false;
+  demo[1].C = false;
+
+
+  demo[2].A = true;
+  demo[2].B = false;
+  demo[2].C = false;
+
+
+  demo[3].A = true;
+  demo[3].B = false;
+  demo[3].C = false;
+
+
+  demo[4].A = false;
+  demo[4].B = true;
+  demo[4].C = false;
+
+
+  demo[5].A = true;
+  demo[5].B = false;
+  demo[5].C = false;
+
+
+  demo[6].A = true;
+  demo[6].B = false;
+  demo[6].C = false;
+
+
+  demo[7].A = true;
+  demo[7].B = false;
+  demo[7].C = false;
+
+
+  demo[8].A = false;
+  demo[8].B = true;
+  demo[8].C = false;
+
+
+  demo[9].A = true;
+  demo[9].B = true;
+  demo[9].C = false;
+
+
+  demo[10].A = false;
+  demo[10].B = true;
+  demo[10].C = false;
+
+
+  demo[11].A = false;
+  demo[11].B = true;
+  demo[11].C = false;
+
+
+  demo[12].A = false;
+  demo[12].B = true;
+  demo[12].C = false;
+
+
+  demo[13].A = false;
+  demo[13].B = true;
+  demo[13].C = false;
+
+
+  demo[14].A = true;
+  demo[14].B = true;
+  demo[14].C = false;
+
+
+  demo[15].A = true;
+  demo[15].B = true;
+  demo[15].C = false;
+
+
+  demo[16].A = true;
+  demo[16].B = true;
+  demo[16].C = false;
+
+
+  demo[17].A = true;
+  demo[17].B = true;
+  demo[17].C = false;
+
+
+  demo[18].A = true;
+  demo[18].B = true;
+  demo[18].C = false;
+
+
+  demo[19].A = true;
+  demo[19].B = true;
+  demo[19].C = false;
+
+
+  demo[20].A = false;
+  demo[20].B = true;
+  demo[20].C = false;
+
+
+
+  testMission =  createMissionList(21,demo);
+
+  
+}
+
 
 /*
 * 偏移检测
