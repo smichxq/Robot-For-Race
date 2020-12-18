@@ -5,6 +5,7 @@
 #define goBack 1
 #define turnLeft 2
 #define turnRight 3
+#define stop 4
 
 //当前方向
 short currentState;
@@ -100,6 +101,8 @@ missions currentMissions[14];
 /*=====================测试路径==================*/
 
 mission* testMission;
+mission* p  = testMission;
+bool onceFlag = true;
 
 /*=====================测试路径==================*/
 
@@ -109,8 +112,8 @@ mission* testMission;
  *               0 1  2  3 4  5
  */
  
-
-long tm = 0;//时间变量,用来计时
+//时间变量,用来计时(已弃用，原因：中断优先级未知，外部中断引脚不足)
+//long tm = 0;
 
 //boolean is1 = true;//标记位,用来判定是哪一侧先触线
 
@@ -166,8 +169,8 @@ void loop()
   delay(1000000);
 
   /*
-  双重遍历任务序列
-  每遍历一次直到走完当前方格进行第二次遍历路径
+  先使用路径规划pathPlan
+  在命令舵机移动directions
   */
   
 }
@@ -526,6 +529,12 @@ void directions(){
         motorB2PNS(P);
         motorB2();
         break;
+
+    case stop:
+      motorA1PNS(stop);
+      motorA1PNS(stop);
+      motorA1PNS(stop);
+      motorA1PNS(stop);
     }
   
 }
@@ -607,7 +616,7 @@ void missionsInit(){
   //路径序列,每一个任务的路径,共有14个
   mission missionAry[12];
 
-  mission* p = NULL;
+  //mission* p = NULL;
 
   for (int i = 0; i < 12; i++)
   {
@@ -688,8 +697,10 @@ void missionsInit(){
 */
 void pathPlan()
 {
+
   bool flagA = false;
   bool flagB = false;
+
   
   //判断是否经过方格
   isA12_F_flag = digitalRead(SensorPinF);
@@ -698,9 +709,57 @@ void pathPlan()
   isA15_L_flag = digitalRead(SensorPinL);
   isA15_R_flag = digitalRead(SensorPinR);
 
-  mission* p = testMission;
+  
 
-  //判断是否经过方格
+ 
+
+  //经过方格，移动到下一个路径
+  if (flagB && flagA)
+  {
+    p = p->next;
+    flagA = false;
+    flagB = false;
+  }
+  
+
+  
+  
+  
+
+  // while (p)
+  // {
+    //Serial.println(p->A + p->B + p->C);
+
+    //前
+    if (!(p->A) && !(p->B))
+    {
+      //更新当前方向
+      currentState = goStraight;
+      
+
+
+    }
+    //后
+    if (!(p->A) && p->B)
+    {
+      //更新当前方向
+      currentState = goBack;
+    }
+    //左
+    if (p->A && !(p->B))
+    {
+      //更新当前方向
+      currentState = turnLeft;
+    }
+    //右
+    if (p->A && p->B)
+    {
+      //更新当前方向
+      currentState = turnRight;
+    }
+  // }
+
+   //判断是否经过方格
   switch (currentState)
   {
   case goStraight:
@@ -747,60 +806,11 @@ void pathPlan()
     }
     break;
 
+  
+
   default:
     break;
   }
-
-
-  //经过方格，移动到下一个路径
-  if (flagB && flagA)
-  {
-    p = p->next;
-    flagA = false;
-    flagB = false;
-  }
-  
-
-  
-  
-  
-
-  // while (p)
-  // {
-    //Serial.println(p->A + p->B + p->C);
-
-    //前
-    if (!(p->A) && !(p->B))
-    {
-      //更新当前方向
-      currentState = goStraight;
-      
-
-
-    }
-    //后
-    if (!(p->A) && p->B)
-    {
-      //更新当前方向
-      currentState = goBack;
-    }
-    //左
-    if (p->A && !(p->B))
-    {
-      //更新当前方向
-      currentState = turnLeft;
-    }
-    //右
-    if (p->A && p->B)
-    {
-      //更新当前方向
-      currentState = turnRight;
-    }
-
-    delay(1000);
-  // }
-
-
 
 }
 
