@@ -161,32 +161,43 @@ void setup() {
   //angleTest();
   //传感器初始化
   //sensorInit();
-    //MsTimer2::set(5,stateFix());
-  setSpdA1(100);
-  setSpdA2(100);
-  setSpdB1(100);
-  setSpdB2(100);
+  //MsTimer2::set(5,stateFix);
+  motorInit();
+  setSpdA1(130);
+  setSpdA2(130);
+  setSpdB1(130);
+  setSpdB2(130);
 
 }  
 void loop()
 {
+  //pathPlan();
+  //directions();
   
-  delay(2000);
+  delay(1000);
   directions(goStraight);
-  delay(2000);
+  delay(1000);
+  directions(stp);
+  delay(4000);
   directions(goBack);
-  delay(2000);
+  delay(1000);
+  directions(stp);
+  delay(4000);
   directions(turnLeft);
-  delay(2000);
+  delay(1000);
+  directions(stp);
+  delay(4000);
   directions(turnRight);
-  delay(2000);
+  delay(1000);
+  directions(stp);
+  delay(1000000);
   
 
-  delay(1000000);
+
 
   /*
   先使用路径规划pathPlan
-  在命令舵机移动directions
+  在命令电机移动directions
   */
   
 }
@@ -268,6 +279,10 @@ void sensorTimerInit(){
 */
 
 void motorInit(){
+  pinMode(A0,OUTPUT);
+  pinMode(A1,OUTPUT);
+  pinMode(A2,OUTPUT);
+  pinMode(A3,OUTPUT);
   pinMode(A4,OUTPUT);
   pinMode(A5,OUTPUT);
   pinMode(A6,OUTPUT);
@@ -299,13 +314,13 @@ void motorA1PNS(short mode)
     break;
   case 1:
     //Serial.print("go Straight");
-    digitalWrite(Motor1Ain1,HIGH);
-    digitalWrite(Motor1Ain2,LOW);
+    digitalWrite(Motor1Ain1,LOW);
+    digitalWrite(Motor1Ain2,HIGH);
     break;
   case 2:
     //Serial.print("go back");
-    digitalWrite(Motor1Ain1,LOW);
-    digitalWrite(Motor1Ain2,HIGH);
+    digitalWrite(Motor1Ain1,HIGH);
+    digitalWrite(Motor1Ain2,LOW);
     break;
   
   default:
@@ -549,10 +564,10 @@ void directions(short dirct){
         break;
 
     case stp:
-      motorA1PNS(stp);
-      motorA1PNS(stp);
-      motorA1PNS(stp);
-      motorA1PNS(stp);
+      motorA1PNS(S);
+      motorA2PNS(S);
+      motorB1PNS(S);
+      motorB2PNS(S);
     }
   
 }
