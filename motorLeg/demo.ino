@@ -31,19 +31,23 @@ short currentState;
 #define SensorPinL A15
 
 //电机接口
-#define MotorPin1 A0
+//#define MotorPin1 A0
+#define MotorPin1 4
 #define Motor1Ain2 A1
 #define Motor1Ain1 A2
 
-#define MotorPin2 A5
+//#define MotorPin2 A5
+#define MotorPin2 5
 #define Motor2Ain1 A3
 #define Motor2Ain2 A4
 
-#define MotorPin3 A6
+//#define MotorPin3 A6
+#define MotorPin3 6
 #define Motor3Ain1 A8
 #define Motor3Ain2 A7
 
-#define MotorPin4 A11
+//#define MotorPin4 A11
+#define MotorPin4 7
 #define Motor4Ain1 A9
 #define Motor4Ain2 A10
 
@@ -163,10 +167,10 @@ void setup() {
   //sensorInit();
   //MsTimer2::set(5,stateFix);
   motorInit();
-  setSpdA1(130);
-  setSpdA2(130);
-  setSpdB1(130);
-  setSpdB2(130);
+  setSpdA1(80);
+  setSpdA2(80);
+  setSpdB1(80);
+  setSpdB2(80);
 
 }  
 void loop()
