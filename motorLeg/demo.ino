@@ -5,7 +5,7 @@
 #define goBack 1
 #define turnLeft 2
 #define turnRight 3
-#define stop 4
+#define stp 4
 
 //当前方向
 short currentState;
@@ -136,6 +136,7 @@ short isA15_L_flag = 0;
 
 
 
+
 //全局速度变量
 short spdA1 = 0;
 short spdA1Count = 0;
@@ -151,8 +152,8 @@ LobotServoController myse(Serial3);//舵机控制
 
 void setup() {
   //测试路径初始化
-  test();
-  Serial.begin(9600);
+  //test();
+  //Serial.begin(9600);
   //pinMode(13,OUTPUT); 
   //Serial3.begin(9600);
   //while(!Serial3);
@@ -160,11 +161,26 @@ void setup() {
   //angleTest();
   //传感器初始化
   //sensorInit();
-    MsTimer2::set(5,stateFix());
+    //MsTimer2::set(5,stateFix());
+  setSpdA1(100);
+  setSpdA2(100);
+  setSpdB1(100);
+  setSpdB2(100);
 
 }  
 void loop()
 {
+  
+  delay(2000);
+  directions(goStraight);
+  delay(2000);
+  directions(goBack);
+  delay(2000);
+  directions(turnLeft);
+  delay(2000);
+  directions(turnRight);
+  delay(2000);
+  
 
   delay(1000000);
 
@@ -217,7 +233,7 @@ void sensorInit(){
 
   //前后中间传感器
   pinMode(SensorPinF,INPUT);
-  pinMide(SensorPinB,INPUT);
+  pinMode(SensorPinB,INPUT);
 
   //两侧中间
   pinMode(SensorPinL,INPUT);
@@ -230,15 +246,17 @@ void sensorInit(){
 void sensorTimerInit(){
 
   /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!一旦進入中断程序 就會自動禁止中斷服务!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
+  
   //当int.N电平时,升高时触发中断函数blink,2号引脚 3号引脚
-  attachInterrupt(0, isr0, FALLING);
-  attachInterrupt(1, isr1, FALLING);
+//  
+//  attachInterrupt(0, isr0, FALLING);
+//  attachInterrupt(1, isr1, FALLING);
 
   //当int.N电平时,升高时触发中断函数blink,2号引脚 3号引脚
-  attachInterrupt(2, isr2, FALLING);
-  attachInterrupt(3, isr3, FALLING);
+//  attachInterrupt(2, isr2, FALLING);
+//  attachInterrupt(3, isr3, FALLING);
   //设置中断服务,每1ms运行一次,使用c的tick
-  MsTimer2::set(1,count);
+  //MsTimer2::set(1,count);
 /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!一旦進入中断程序 就會自動禁止中斷服务!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
   
 }
@@ -466,8 +484,8 @@ void motorB2(){
 * 目前只有四个方向
 * 后期增加其他方向
 */
-void directions(){
-  short dirct = currentState;
+void directions(short dirct){
+  //short dirct = currentState;
 
     switch (dirct)
     {
@@ -530,11 +548,11 @@ void directions(){
         motorB2();
         break;
 
-    case stop:
-      motorA1PNS(stop);
-      motorA1PNS(stop);
-      motorA1PNS(stop);
-      motorA1PNS(stop);
+    case stp:
+      motorA1PNS(stp);
+      motorA1PNS(stp);
+      motorA1PNS(stp);
+      motorA1PNS(stp);
     }
   
 }
@@ -707,7 +725,7 @@ void pathPlan()
   isA14_B_flag = digitalRead(SensorPinB);
 
   isA15_L_flag = digitalRead(SensorPinL);
-  isA15_R_flag = digitalRead(SensorPinR);
+  isA13_R_flag = digitalRead(SensorPinR);
 
   
 
@@ -1184,7 +1202,7 @@ if (currentState == turnLeft || currentState == turnRight)
   
 
 
-} 
+
 
 /*
 * 舵机角度标定
@@ -1215,7 +1233,7 @@ void angleTest(){
  */
 void count(){
   //Serial.println(tm++);
-  tm++;
+  //tm++;
 }
 
 
@@ -1226,34 +1244,14 @@ void count(){
  */
 void isr1()
 {
-  //如果是位置为1的传感器,
-  if (is2)
-  {
-    MsTimer2::stop();
-    return;
-  }
 
-  if (is3)
-  {
-    /* code */
-  }
-  
-
-  MsTimer2::start();
 
 }
 
 
 void isr0()
 {
-  //如果是位置为1的传感器
-  if (is1)
-  {
-    MsTimer2::start();
-    return;
-  }
 
-  MsTimer2::stop();
 
 }
 
