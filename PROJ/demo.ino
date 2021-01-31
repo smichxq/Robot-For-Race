@@ -175,6 +175,11 @@ void setup() {
 }  
 void loop()
 {
+
+  /*
+  先使用路径规划pathPlan
+  在命令电机移动directions
+  */
   //pathPlan();
   //directions();
   
@@ -199,10 +204,7 @@ void loop()
 
 
 
-  /*
-  先使用路径规划pathPlan
-  在命令电机移动directions
-  */
+
   
 }
 
@@ -314,6 +316,15 @@ void motorInit(){
 
   
 }
+
+//中断服务初始化
+
+void IntServiceInit(){
+    MsTimer2::set(5,count);
+    MsTimer2::start();
+}
+
+
 
 /*
 * 电机正反转控制
@@ -522,6 +533,12 @@ void motorB2(){
 */
 void directions(short dirct){
   //short dirct = currentState;
+
+  //电机换向保护
+    motorA1PNS(S);
+    motorA2PNS(S);
+    motorB1PNS(S);
+    motorB2PNS(S);
 
     switch (dirct)
     {
