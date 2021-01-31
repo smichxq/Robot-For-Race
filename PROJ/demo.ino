@@ -31,22 +31,22 @@ short currentState;
 #define SensorPinL A15
 
 //电机接口
-//#define MotorPin1 A0
+#define CodeA1 18
 #define MotorPin1 4
 #define Motor1Ain2 A1
 #define Motor1Ain1 A2
 
-//#define MotorPin2 A5
+#define CodeA2 19
 #define MotorPin2 5
 #define Motor2Ain1 A3
 #define Motor2Ain2 A4
 
-//#define MotorPin3 A6
+#define CodeB1 20
 #define MotorPin3 6
 #define Motor3Ain1 A8
 #define Motor3Ain2 A7
 
-//#define MotorPin4 A11
+#define CodeB2 21
 #define MotorPin4 7
 #define Motor4Ain1 A9
 #define Motor4Ain2 A10
@@ -143,13 +143,13 @@ short isA15_L_flag = 0;
 
 //全局速度变量
 short spdA1 = 0;
-short spdA1Count = 0;
+volatile long spdA1Count = 0;
 short spdA2 = 0;
-short spdA2Count = 0;
+volatile long spdA2Count = 0;
 short spdB1 = 0;
-short spdB1Count = 0;
+volatile long spdB1Count = 0;
 short spdB2 = 0;
-short spdB2Count = 0;
+volatile long spdB2Count = 0;
 
 
 LobotServoController myse(Serial3);//舵机控制
@@ -294,7 +294,24 @@ void motorInit(){
   pinMode(A8,OUTPUT);
   pinMode(A9,OUTPUT);
   pinMode(A10,OUTPUT);
-  pinMode(A11,OUTPUT);
+
+  //编码器外部中断
+  pinMode(CodeA1,INPUT);
+  pinMode(CodeA2,INPUT);
+  pinMode(CodeB1,INPUT);
+  pinMode(CodeB2,INPUT);
+
+/*
+* 外部中断口服务初始化
+* int.2 int.3 int.4 int.5
+*   21   20     19    18
+*/
+  attachInterrupt(2, isr0, CHANGE);
+  attachInterrupt(3, isr1, CHANGE);
+  attachInterrupt(4, isr2, CHANGE);
+  attachInterrupt(5, isr3, CHANGE);
+  
+
   
 }
 
@@ -1244,34 +1261,69 @@ void angleTest(){
 
 }
 
-/*
- * MsTimer(N)
- * 定时中断函数
- * 如果影响,使用原生计时器
- * 用来计数
- */
-void count(){
-  //Serial.println(tm++);
-  //tm++;
-}
 
 
 /*
- * 第一组外部中断函数isr0~2
- * 只运行一次
- * 用来触发定时中断
+ * 外部中断函数isr1~4
  */
-void isr1()
-{
-
-
-}
-
-
 void isr0()
 {
+    spdA1Count++;
 
 
 }
+
+
+void isr1()
+{
+    spdA2Count++;
+
+
+}
+
+void isr2()
+{
+    spdB1Count++;
+
+
+}
+
+void isr3()
+{
+    spdB2Count;
+
+}
+
+
+
+void count(){
+
+
+    detachInterrupt(2);
+    detachInterrupt(3);
+    detachInterrupt(4);
+    detachInterrupt(5);
+
+    // Serial.print("A1:   ");
+    // Serial.print(spdA1Count);
+    // Serial.print("A2:   ");
+    // Serial.print(spdA2Count);
+    // Serial.print("B1:   ");
+    // Serial.print(spdB1Count);
+    // Serial.print("B2:   ");
+    // Serial.print(spdB2Count);
+
+    spdA1Count = spdA2Count = spdB1Count = spdB2Count = 0;
+
+    attachInterrupt(2,isr0,CHANGE);
+    attachInterrupt(2,isr1,CHANGE);
+    attachInterrupt(2,isr2,CHANGE);
+    attachInterrupt(2,isr3,CHANGE);
+
+
+
+
+}
+
 
 
