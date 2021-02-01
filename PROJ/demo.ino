@@ -10,25 +10,26 @@
 //当前方向
 short currentState;
 
-/*
-* 传感器外部中断接口
-* 每一侧的两边传感器接中断接口
-* 用来方格修正
-*/
-
-#define Isrpin0 2
-#define Isrpin1 3
-
-#define Isrpin2 21
-#define Inrpin3 20
 
 
 
-//传感器普通(中间)接口
-#define SensorPinF A12 
-#define SensorPinR A13
-#define SensorPinB A14
-#define SensorPinL A15
+//传感器接口
+#define SensorPinF_1 52
+#define SensorPinF_2 51 
+#define SensorPinF_3 50
+
+#define SensorPinR_1 49
+#define SensorPinR_2 48 
+#define SensorPinR_3 47 
+
+#define SensorPinB_1 46
+#define SensorPinB_2 45 
+#define SensorPinB_3 44 
+
+#define SensorPinL_1 43
+#define SensorPinL_2 42 
+#define SensorPinL_3 41 
+
 
 //电机接口
 #define CodeA1 18
@@ -138,7 +139,9 @@ short isA13_R_flag = 0;
 short isA14_B_flag = 0;
 short isA15_L_flag = 0;
 
-
+//全局时间变量
+long int T1 = 0;
+long int T2 = 0;
 
 
 //全局速度变量
@@ -152,11 +155,17 @@ short spdB2 = 0;
 volatile long spdB2Count = 0;
 
 
+//
+bool flagA = false;
+bool flagB = false;
+bool flagC = true;
+
+
 LobotServoController myse(Serial3);//舵机控制
 
 void setup() {
   //测试路径初始化
-  //test();
+  test();
   //Serial.begin(9600);
   //pinMode(13,OUTPUT); 
   //Serial3.begin(9600);
@@ -164,7 +173,7 @@ void setup() {
   //digitalWrite(13,HIGH);
   //angleTest();
   //传感器初始化
-  //sensorInit();
+  sensorInit();
   //MsTimer2::set(5,stateFix);
   motorInit();
   setSpdA1(80);
@@ -180,26 +189,26 @@ void loop()
   先使用路径规划pathPlan
   在命令电机移动directions
   */
-  //pathPlan();
-  //directions();
+  pathPlan();
+  directions();
   
-  delay(1000);
-  directions(goStraight);
-  delay(1000);
-  directions(stp);
-  delay(4000);
-  directions(goBack);
-  delay(1000);
-  directions(stp);
-  delay(4000);
-  directions(turnLeft);
-  delay(1000);
-  directions(stp);
-  delay(4000);
-  directions(turnRight);
-  delay(1000);
-  directions(stp);
-  delay(1000000);
+//   delay(1000);
+//   directions(goStraight);
+//   delay(1000);
+//   directions(stp);
+//   delay(4000);
+//   directions(goBack);
+//   delay(1000);
+//   directions(stp);
+//   delay(4000);
+//   directions(turnLeft);
+//   delay(1000);
+//   directions(stp);
+//   delay(4000);
+//   directions(turnRight);
+//   delay(1000);
+//   directions(stp);
+//   delay(1000000);
   
 
 
@@ -232,33 +241,28 @@ char* getTarget(){
 }
 /* 
 * 传感器初始化
-* 初始化支持外中断引脚为输入模式
-* 设定外部中断服务
-* 开启计数中断
 */
 void sensorInit(){
-  //Serial.begin(9600);
 
+    pinMode(SensorPinF_1,INPUT);
+    pinMode(SensorPinF_2,INPUT);
+    pinMode(SensorPinF_3,INPUT);
 
-  //第一组传感器中断引脚
-  pinMode(Isrpin0, INPUT);
-  pinMode(Isrpin1, INPUT);
+    pinMode(SensorPinB_1,INPUT);
+    pinMode(SensorPinB_2,INPUT);
+    pinMode(SensorPinB_3,INPUT);
 
-  //第二组传感器中断引脚
-  pinMode(Isrpin2, INPUT);
-  pinMode(Inrpin3, INPUT);
+    pinMode(SensorPinL_1,INPUT);
+    pinMode(SensorPinL_2,INPUT);
+    pinMode(SensorPinL_3,INPUT);
 
-  //前后中间传感器
-  pinMode(SensorPinF,INPUT);
-  pinMode(SensorPinB,INPUT);
-
-  //两侧中间
-  pinMode(SensorPinL,INPUT);
-  pinMode(SensorPinR,INPUT);
+    pinMode(SensorPinR_1,INPUT);
+    pinMode(SensorPinR_2,INPUT);
+    pinMode(SensorPinR_3,INPUT);
 
 }
 /*
-* 传感器计数服务初始化
+* 传感器计数服务初始化============================================废弃====================================
 */
 void sensorTimerInit(){
 
@@ -531,7 +535,7 @@ void motorB2(){
 * 目前只有四个方向
 * 后期增加其他方向
 */
-void directions(short dirct){
+void directions(){
   //short dirct = currentState;
 
   //电机换向保护
@@ -540,7 +544,7 @@ void directions(short dirct){
     motorB1PNS(S);
     motorB2PNS(S);
 
-    switch (dirct)
+    switch (currentState)
     {
     case goStraight:
         //printf("goStraight\n");
@@ -616,7 +620,7 @@ void directions(short dirct){
 * 功能: 增加一个路径序列项
 * 参数: 任务结构体mission的每一项标记位
 */
-mission* addMission(int a,int b,int c)
+mission* addMission(bool a,bool b,bool c)
 {
   mission* currentMission = NULL;
 
@@ -769,16 +773,16 @@ void missionsInit(){
 void pathPlan()
 {
 
-  bool flagA = false;
-  bool flagB = false;
+
+
 
   
   //判断是否经过方格
-  isA12_F_flag = digitalRead(SensorPinF);
-  isA14_B_flag = digitalRead(SensorPinB);
+  isA12_F_flag = digitalRead(SensorPinF_2);
+  isA14_B_flag = digitalRead(SensorPinB_2);
 
-  isA15_L_flag = digitalRead(SensorPinL);
-  isA13_R_flag = digitalRead(SensorPinR);
+  isA15_L_flag = digitalRead(SensorPinL_2);
+  isA13_R_flag = digitalRead(SensorPinR_2);
 
   
 
@@ -790,6 +794,8 @@ void pathPlan()
     p = p->next;
     flagA = false;
     flagB = false;
+    flagC = true;
+    T1 = T2 = 0;
   }
   
 
@@ -807,8 +813,6 @@ void pathPlan()
       //更新当前方向
       currentState = goStraight;
       
-
-
     }
     //后
     if (!(p->A) && p->B)
@@ -828,6 +832,11 @@ void pathPlan()
       //更新当前方向
       currentState = turnRight;
     }
+
+    if (p->C)
+    {
+        currentState = stp;
+    }
   // }
 
    //判断是否经过方格
@@ -840,7 +849,21 @@ void pathPlan()
     }
     if (isA14_B_flag == 0)
     {
-      flagB = true;
+        //tick-pwm表
+        
+        T2 = getTickTime();
+
+        if (flagC)
+        {
+            T1 = T2;
+            flagC = false;
+        }
+        
+        if (T2 - T1 > 500)
+        {
+            flagB = true;
+        }
+
     }
     break;
   case goBack:
@@ -850,7 +873,18 @@ void pathPlan()
     }
     if (isA12_F_flag == 0)
     {
-      flagA = true;
+        T2 = getTickTime();
+
+        if (flagC)
+        {
+            T1 = T2;
+            flagC = false;
+        }
+        
+        if (T2 - T1 > 500)
+        {
+            flagB = true;
+        }
     }
     break;
 
@@ -861,7 +895,18 @@ void pathPlan()
     }
     if (isA13_R_flag == 0)
     {
-      flagB = true;
+        T2 = getTickTime();
+
+        if (flagC)
+        {
+            T1 = T2;
+            flagC = false;
+        }
+        
+        if (T2 - T1 > 500)
+        {
+            flagB = true;
+        }
     }
     break;
     
@@ -873,11 +918,23 @@ void pathPlan()
     }
     if (isA15_L_flag == 0)
     {
-      flagB = true;
+        T2 = getTickTime();
+
+        if (flagC)
+        {
+            T1 = T2;
+            flagC = false;
+        }
+        
+        if (T2 - T1 > 500)
+        {
+            flagB = true;
+        }
     }
     break;
+  case stp:
+    break;
 
-  
 
   default:
     break;
@@ -891,7 +948,7 @@ void pathPlan()
 */
 
 void test(){
-  mission demo[21];
+  mission demo[6];
 
   demo[0].A = true;
   demo[0].B = false;
@@ -922,83 +979,10 @@ void test(){
   demo[5].C = false;
 
 
-  demo[6].A = true;
-  demo[6].B = false;
-  demo[6].C = false;
-
-
-  demo[7].A = true;
-  demo[7].B = false;
-  demo[7].C = false;
-
-
-  demo[8].A = false;
-  demo[8].B = true;
-  demo[8].C = false;
-
-
-  demo[9].A = true;
-  demo[9].B = true;
-  demo[9].C = false;
-
-
-  demo[10].A = false;
-  demo[10].B = true;
-  demo[10].C = false;
-
-
-  demo[11].A = false;
-  demo[11].B = true;
-  demo[11].C = false;
-
-
-  demo[12].A = false;
-  demo[12].B = true;
-  demo[12].C = false;
-
-
-  demo[13].A = false;
-  demo[13].B = true;
-  demo[13].C = false;
-
-
-  demo[14].A = true;
-  demo[14].B = true;
-  demo[14].C = false;
-
-
-  demo[15].A = true;
-  demo[15].B = true;
-  demo[15].C = false;
-
-
-  demo[16].A = true;
-  demo[16].B = true;
-  demo[16].C = false;
-
-
-  demo[17].A = true;
-  demo[17].B = true;
-  demo[17].C = false;
-
-
-  demo[18].A = true;
-  demo[18].B = true;
-  demo[18].C = false;
-
-
-  demo[19].A = true;
-  demo[19].B = true;
-  demo[19].C = false;
-
-
-  demo[20].A = false;
-  demo[20].B = true;
-  demo[20].C = false;
 
 
 
-  testMission =  createMissionList(21,demo);
+  testMission =  createMissionList(6,demo);
 
   
 }
@@ -1340,6 +1324,10 @@ void count(){
 
 
 
+}
+
+long int getTickTime(){
+    return millis();
 }
 
 
