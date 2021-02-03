@@ -1,4 +1,4 @@
-#include <LobotServoController.h>
+// #include <LobotServoController.h>
 #include <MsTimer2.h>
 //方向
 #define goStraight 0
@@ -161,18 +161,11 @@ bool flagB = false;
 bool flagC = true;
 
 
-LobotServoController myse(Serial3);//舵机控制
+// LobotServoController myse(Serial3);//舵机控制
 
 void setup() {
   //测试路径初始化
   test();
-  //Serial.begin(9600);
-  //pinMode(13,OUTPUT); 
-  //Serial3.begin(9600);
-  //while(!Serial3);
-  //digitalWrite(13,HIGH);
-  //angleTest();
-  //传感器初始化
   sensorInit();
   //MsTimer2::set(5,stateFix);
   motorInit();
@@ -184,6 +177,7 @@ void setup() {
 }  
 void loop()
 {
+    
 
   /*
   先使用路径规划pathPlan
@@ -191,29 +185,6 @@ void loop()
   */
   pathPlan();
   directions();
-  
-//   delay(1000);
-//   directions(goStraight);
-//   delay(1000);
-//   directions(stp);
-//   delay(4000);
-//   directions(goBack);
-//   delay(1000);
-//   directions(stp);
-//   delay(4000);
-//   directions(turnLeft);
-//   delay(1000);
-//   directions(stp);
-//   delay(4000);
-//   directions(turnRight);
-//   delay(1000);
-//   directions(stp);
-//   delay(1000000);
-  
-
-
-
-
   
 }
 
@@ -289,7 +260,7 @@ void sensorTimerInit(){
 */
 
 void motorInit(){
-  pinMode(A0,OUTPUT);
+
   pinMode(A1,OUTPUT);
   pinMode(A2,OUTPUT);
   pinMode(A3,OUTPUT);
@@ -302,20 +273,20 @@ void motorInit(){
   pinMode(A10,OUTPUT);
 
   //编码器外部中断
-  pinMode(CodeA1,INPUT);
-  pinMode(CodeA2,INPUT);
-  pinMode(CodeB1,INPUT);
-  pinMode(CodeB2,INPUT);
+//   pinMode(CodeA1,INPUT);
+//   pinMode(CodeA2,INPUT);
+//   pinMode(CodeB1,INPUT);
+//   pinMode(CodeB2,INPUT);
 
 /*
 * 外部中断口服务初始化
 * int.2 int.3 int.4 int.5
 *   21   20     19    18
 */
-  attachInterrupt(2, isr0, CHANGE);
-  attachInterrupt(3, isr1, CHANGE);
-  attachInterrupt(4, isr2, CHANGE);
-  attachInterrupt(5, isr3, CHANGE);
+//   attachInterrupt(2, isr0, CHANGE);
+//   attachInterrupt(3, isr1, CHANGE);
+//   attachInterrupt(4, isr2, CHANGE);
+//   attachInterrupt(5, isr3, CHANGE);
   
 
   
@@ -536,15 +507,15 @@ void motorB2(){
 * 后期增加其他方向
 */
 void directions(){
-  //short dirct = currentState;
+  short dirct = currentState;
 
   //电机换向保护
-    motorA1PNS(S);
-    motorA2PNS(S);
-    motorB1PNS(S);
-    motorB2PNS(S);
+    // motorA1PNS(S);
+    // motorA2PNS(S);
+    // motorB1PNS(S);
+    // motorB2PNS(S);
 
-    switch (currentState)
+    switch (dirct)
     {
     case goStraight:
         //printf("goStraight\n");
@@ -959,8 +930,8 @@ void test(){
   demo[1].C = false;
 
 
-  demo[2].A = true;
-  demo[2].B = false;
+  demo[2].A = false;
+  demo[2].B = true;
   demo[2].C = false;
 
 
@@ -976,7 +947,7 @@ void test(){
 
   demo[5].A = true;
   demo[5].B = false;
-  demo[5].C = false;
+  demo[5].C = true;
 
 
 
@@ -1250,7 +1221,7 @@ void angleTest(){
   short angle = 500;
     while (1)
   {
-    myse.moveServo(1,angle,1000);
+    //myse.moveServo(1,angle,1000);
     angle = (angle + 1000) % 2500;
     if (!angle)
     {
