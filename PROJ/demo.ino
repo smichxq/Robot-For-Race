@@ -8,7 +8,7 @@
 #define stp 4
 
 //当前方向
-short currentState;
+short currentStates;
 
 
 
@@ -106,7 +106,7 @@ missions currentMissions[14];
 /*=====================测试路径==================*/
 
 mission* testMission;
-mission* p  = testMission;
+mission* p  = NULL;//p指针在其实例化后无法动态绑定
 bool onceFlag = true;
 
 /*=====================测试路径==================*/
@@ -166,6 +166,7 @@ bool flagC = true;
 void setup() {
   //测试路径初始化
   test();
+  p = testMission;
   sensorInit();
   //MsTimer2::set(5,stateFix);
   motorInit();
@@ -183,8 +184,25 @@ void loop()
   先使用路径规划pathPlan
   在命令电机移动directions
   */
-  pathPlan();
+  pathPlan();//检查路径规划
   directions();
+    // currentStates = goStraight;
+    // directions();
+    // delay(1000);
+    // currentStates = goBack;
+    // directions();
+    // delay(1000);
+    // currentStates = turnLeft;
+    // directions();
+    // delay(1000);
+    // currentStates = turnRight;
+    // directions();
+    // delay(1000);
+    // currentStates = stp;
+    // directions();
+    // delay(20000);
+
+
   
 }
 
@@ -507,7 +525,7 @@ void motorB2(){
 * 后期增加其他方向
 */
 void directions(){
-  short dirct = currentState;
+  short dirct = currentStates;
 
   //电机换向保护
     // motorA1PNS(S);
@@ -615,14 +633,14 @@ mission* createMissionList(short num,mission* missArry)
 {
   mission* head = NULL;
   mission* p = NULL;
-  short flag = 1;
+  bool flag = true;
   for (int i = 0; i < num; i++)
   {
     if (flag)
     {
       head = addMission(missArry[i].A,missArry[i].B,missArry[i].C);
       p = head;
-      flag = 0;
+      flag = false;
       continue;
     }
 
@@ -743,6 +761,7 @@ void missionsInit(){
 */
 void pathPlan()
 {
+    bool Listflag = true;
 
 
 
@@ -767,6 +786,10 @@ void pathPlan()
     flagB = false;
     flagC = true;
     T1 = T2 = 0;
+    if (p == NULL){
+        Listflag = false;
+        currentStates = stp;
+    }
   }
   
 
@@ -779,39 +802,39 @@ void pathPlan()
     //Serial.println(p->A + p->B + p->C);
 
     //前
-    if (!(p->A) && !(p->B))
+    if (!(p->A) && !(p->B) && Listflag)
     {
       //更新当前方向
-      currentState = goStraight;
+      currentStates = goStraight;
       
     }
     //后
-    if (!(p->A) && p->B)
+    if (!(p->A) && p->B && Listflag)
     {
       //更新当前方向
-      currentState = goBack;
+      currentStates = goBack;
     }
     //左
-    if (p->A && !(p->B))
+    if (p->A && !(p->B) && Listflag)
     {
       //更新当前方向
-      currentState = turnLeft;
+      currentStates = turnLeft;
     }
     //右
-    if (p->A && p->B)
+    if (p->A && p->B && Listflag)
     {
       //更新当前方向
-      currentState = turnRight;
+      currentStates = turnRight;
     }
 
-    if (p->C)
+    if (p->C && Listflag)
     {
-        currentState = stp;
+        currentStates = stp;
     }
   // }
 
    //判断是否经过方格
-  switch (currentState)
+  switch (currentStates)
   {
   case goStraight:
     if (isA12_F_flag == 0)
@@ -984,7 +1007,7 @@ void stateFix()
 
 
 
-  switch (currentState)
+  switch (currentStates)
   {
   case goStraight:
     //当前方向 偏右(左侧先触碰)
