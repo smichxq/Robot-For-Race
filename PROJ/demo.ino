@@ -7,6 +7,15 @@
 #define turnRight 3
 #define stp 4
 
+//越线阈值
+#define tickThreshold 50
+
+//速度
+#define targetSpd 50
+
+//取样周期
+#define smpT 500
+
 //当前方向
 short currentStates;
 
@@ -155,7 +164,7 @@ short spdB2 = 0;
 volatile long spdB2Count = 0;
 
 
-//
+//状态控制因子
 bool flagA = false;
 bool flagB = false;
 bool flagC = true;
@@ -168,16 +177,22 @@ void setup() {
   test();
   p = testMission;
   sensorInit();
-  //MsTimer2::set(5,stateFix);
+  IntServiceInit();
   motorInit();
-  setSpdA1(80);
-  setSpdA2(80);
-  setSpdB1(80);
-  setSpdB2(80);
+  setSpdA1(targetSpd);
+  setSpdA2(targetSpd);
+  setSpdB1(targetSpd);
+  setSpdB2(targetSpd);
 
 }  
 void loop()
 {
+    if (onceFlag)
+    {
+        delay(500);
+        onceFlag = false;
+    }
+    
     
 
   /*
@@ -250,26 +265,7 @@ void sensorInit(){
     pinMode(SensorPinR_3,INPUT);
 
 }
-/*
-* 传感器计数服务初始化============================================废弃====================================
-*/
-void sensorTimerInit(){
 
-  /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!一旦進入中断程序 就會自動禁止中斷服务!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
-  
-  //当int.N电平时,升高时触发中断函数blink,2号引脚 3号引脚
-//  
-//  attachInterrupt(0, isr0, FALLING);
-//  attachInterrupt(1, isr1, FALLING);
-
-  //当int.N电平时,升高时触发中断函数blink,2号引脚 3号引脚
-//  attachInterrupt(2, isr2, FALLING);
-//  attachInterrupt(3, isr3, FALLING);
-  //设置中断服务,每1ms运行一次,使用c的tick
-  //MsTimer2::set(1,count);
-/*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!一旦進入中断程序 就會自動禁止中斷服务!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
-  
-}
 
 /*
 * 电机接口初始化
@@ -291,20 +287,20 @@ void motorInit(){
   pinMode(A10,OUTPUT);
 
   //编码器外部中断
-//   pinMode(CodeA1,INPUT);
-//   pinMode(CodeA2,INPUT);
-//   pinMode(CodeB1,INPUT);
-//   pinMode(CodeB2,INPUT);
+  pinMode(CodeA1,INPUT);
+  pinMode(CodeA2,INPUT);
+  pinMode(CodeB1,INPUT);
+  pinMode(CodeB2,INPUT);
 
 /*
 * 外部中断口服务初始化
 * int.2 int.3 int.4 int.5
 *   21   20     19    18
 */
-//   attachInterrupt(2, isr0, CHANGE);
-//   attachInterrupt(3, isr1, CHANGE);
-//   attachInterrupt(4, isr2, CHANGE);
-//   attachInterrupt(5, isr3, CHANGE);
+  attachInterrupt(2, isr0, CHANGE);
+  attachInterrupt(3, isr1, CHANGE);
+  attachInterrupt(4, isr2, CHANGE);
+  attachInterrupt(5, isr3, CHANGE);
   
 
   
@@ -313,7 +309,7 @@ void motorInit(){
 //中断服务初始化
 
 void IntServiceInit(){
-    MsTimer2::set(5,count);
+    MsTimer2::set(targetSpd,count);
     MsTimer2::start();
 }
 
@@ -599,6 +595,11 @@ void directions(){
       motorA2PNS(S);
       motorB1PNS(S);
       motorB2PNS(S);
+
+      setSpdA1(0);
+      setSpdA2(0);
+      setSpdB1(0);
+      setSpdB2(0);
     }
   
 }
@@ -761,6 +762,7 @@ void missionsInit(){
 */
 void pathPlan()
 {
+    //状态更新控制因子
     bool Listflag = true;
 
 
@@ -841,7 +843,7 @@ void pathPlan()
     {
       flagA = true;
     }
-    if (isA14_B_flag == 0)
+    if (isA14_B_flag == 0 && flagA)
     {
         //tick-pwm表
         
@@ -853,7 +855,7 @@ void pathPlan()
             flagC = false;
         }
         
-        if (T2 - T1 > 500)
+        if (T2 - T1 > tickThreshold)
         {
             flagB = true;
         }
@@ -863,9 +865,9 @@ void pathPlan()
   case goBack:
     if (isA14_B_flag == 0)
     {
-      flagB = true;
+      flagA = true;
     }
-    if (isA12_F_flag == 0)
+    if (isA12_F_flag == 0 && flagA)
     {
         T2 = getTickTime();
 
@@ -875,7 +877,7 @@ void pathPlan()
             flagC = false;
         }
         
-        if (T2 - T1 > 500)
+        if (T2 - T1 > tickThreshold)
         {
             flagB = true;
         }
@@ -887,7 +889,7 @@ void pathPlan()
     {
       flagA = true;
     }
-    if (isA13_R_flag == 0)
+    if (isA13_R_flag == 0 && flagA)
     {
         T2 = getTickTime();
 
@@ -897,7 +899,7 @@ void pathPlan()
             flagC = false;
         }
         
-        if (T2 - T1 > 500)
+        if (T2 - T1 > tickThreshold)
         {
             flagB = true;
         }
@@ -910,7 +912,7 @@ void pathPlan()
     {
       flagA = true;
     }
-    if (isA15_L_flag == 0)
+    if (isA15_L_flag == 0 && flagA)
     {
         T2 = getTickTime();
 
@@ -920,13 +922,19 @@ void pathPlan()
             flagC = false;
         }
         
-        if (T2 - T1 > 500)
+        if (T2 - T1 > tickThreshold)
         {
             flagB = true;
         }
     }
     break;
+
+
+
   case stp:
+    Listflag = false;
+    flagA = false;
+    flagB = false;
     break;
 
 
@@ -943,37 +951,32 @@ void pathPlan()
 
 void test(){
   mission demo[6];
-
-  demo[0].A = true;
+    //S
+  demo[0].A = false;
   demo[0].B = false;
   demo[0].C = false;
-
-  demo[1].A = true;
+    //S
+  demo[1].A = false;
   demo[1].B = false;
   demo[1].C = false;
-
-
-  demo[2].A = false;
-  demo[2].B = true;
+    //L
+  demo[2].A = true;
+  demo[2].B = false;
   demo[2].C = false;
-
-
+  //L
   demo[3].A = true;
   demo[3].B = false;
   demo[3].C = false;
 
-
-  demo[4].A = false;
+    //Right
+  demo[4].A = true;
   demo[4].B = true;
   demo[4].C = false;
 
-
-  demo[5].A = true;
-  demo[5].B = false;
+    //stp
+  demo[5].A = false;
+  demo[5].B = true;
   demo[5].C = true;
-
-
-
 
 
   testMission =  createMissionList(6,demo);
@@ -1285,7 +1288,7 @@ void isr2()
 
 void isr3()
 {
-    spdB2Count;
+    spdB2Count++;
 
 }
 
@@ -1311,9 +1314,9 @@ void count(){
     spdA1Count = spdA2Count = spdB1Count = spdB2Count = 0;
 
     attachInterrupt(2,isr0,CHANGE);
-    attachInterrupt(2,isr1,CHANGE);
-    attachInterrupt(2,isr2,CHANGE);
-    attachInterrupt(2,isr3,CHANGE);
+    attachInterrupt(3,isr1,CHANGE);
+    attachInterrupt(4,isr2,CHANGE);
+    attachInterrupt(5,isr3,CHANGE);
 
 
 
