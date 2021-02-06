@@ -7,19 +7,38 @@
 #define turnRight 3
 #define stp 4
 
-//越线阈值
-#define tickThreshold 50
+//越线阈值 不超150 前后
+#define tickThreshold 130
 
 //速度
 #define targetSpd 50
 
 //取样周期
-#define smpT 500
+#define smpT 50
 
 //当前方向
 short currentStates;
 
+//PID控制器
+float setPoint = 9.0;
 
+
+//PWM 50 setPoint 9
+ 
+float KP_A1 = 9.70, KI_A1 = 7.50, KD_A1 = 2.5;
+
+
+// setPoint 32 KP 2.02 KD 2.2
+float KP_A2 = 2.02, KI_A2 = 0.00, KD_A2 = 0.0;
+
+float KP_B1 = 2.0, KI_B1 = 0, KD_B1 = 0;
+
+float KP_B2 = 2.0, KI_B2 = 0, KD_B2 = 0;
+
+
+float Ek_A1, Ek_A2, Ek_B1, Ek_B2;                       //当前误差
+float Ek1_A1, Ek1_A2, Ek1_B1, Ek1_B2;                      //前一次误差 e(k-1)
+float Ek2_A1, Ek2_A2, Ek2_B1 ,Ek2_B2;                      //再前一次误差 e(k-2)
 
 
 //传感器接口
@@ -179,10 +198,12 @@ void setup() {
   sensorInit();
   IntServiceInit();
   motorInit();
+
   setSpdA1(targetSpd);
   setSpdA2(targetSpd);
   setSpdB1(targetSpd);
   setSpdB2(targetSpd);
+//   Serial.begin(9600);
 
 }  
 void loop()
@@ -199,26 +220,24 @@ void loop()
   先使用路径规划pathPlan
   在命令电机移动directions
   */
-  pathPlan();//检查路径规划
-  directions();
+//   pathPlan();//检查路径规划
+//   directions();
     // currentStates = goStraight;
     // directions();
-    // delay(1000);
+    // delay(2000);
     // currentStates = goBack;
     // directions();
-    // delay(1000);
-    // currentStates = turnLeft;
-    // directions();
-    // delay(1000);
+    // delay(2000);
+    currentStates = turnLeft;
+    directions();
+    delay(3000);
     // currentStates = turnRight;
     // directions();
-    // delay(1000);
-    // currentStates = stp;
-    // directions();
-    // delay(20000);
+    // delay(2000);
+    currentStates = stp;
+    directions();
+    delay(20000);
 
-
-  
 }
 
 
@@ -297,10 +316,10 @@ void motorInit(){
 * int.2 int.3 int.4 int.5
 *   21   20     19    18
 */
-  attachInterrupt(2, isr0, CHANGE);
-  attachInterrupt(3, isr1, CHANGE);
-  attachInterrupt(4, isr2, CHANGE);
-  attachInterrupt(5, isr3, CHANGE);
+  attachInterrupt(5, isr0, CHANGE);
+  attachInterrupt(4, isr1, CHANGE);
+  attachInterrupt(3, isr2, CHANGE);
+  attachInterrupt(2, isr3, CHANGE);
   
 
   
@@ -309,7 +328,7 @@ void motorInit(){
 //中断服务初始化
 
 void IntServiceInit(){
-    MsTimer2::set(targetSpd,count);
+    MsTimer2::set(smpT,count);
     MsTimer2::start();
 }
 
@@ -768,7 +787,7 @@ void pathPlan()
 
 
 
-  
+
   //判断是否经过方格
   isA12_F_flag = digitalRead(SensorPinF_2);
   isA14_B_flag = digitalRead(SensorPinB_2);
@@ -950,36 +969,36 @@ void pathPlan()
 */
 
 void test(){
-  mission demo[6];
+  mission demo[3];
     //S
   demo[0].A = false;
   demo[0].B = false;
   demo[0].C = false;
     //S
   demo[1].A = false;
-  demo[1].B = false;
+  demo[1].B = true;
   demo[1].C = false;
     //L
-  demo[2].A = true;
+  demo[2].A = false;
   demo[2].B = false;
-  demo[2].C = false;
+  demo[2].C = true;
   //L
-  demo[3].A = true;
-  demo[3].B = false;
-  demo[3].C = false;
+//   demo[3].A = false;
+//   demo[3].B = false;
+//   demo[3].C = false;
 
-    //Right
-  demo[4].A = true;
-  demo[4].B = true;
-  demo[4].C = false;
+//     //Right
+//   demo[4].A = false;
+//   demo[4].B = false;
+//   demo[4].C = false;
 
-    //stp
-  demo[5].A = false;
-  demo[5].B = true;
-  demo[5].C = true;
+//     //stp
+//   demo[5].A = false;
+//   demo[5].B = true;
+//   demo[5].C = true;
 
 
-  testMission =  createMissionList(6,demo);
+  testMission =  createMissionList(3,demo);
 
   
 }
@@ -1302,6 +1321,12 @@ void count(){
     detachInterrupt(4);
     detachInterrupt(5);
 
+ //    setSpdA1(spdController(spdA1Count,1) + 50);
+    // Serial.println(spdA1Count);
+//    Serial.print(",");
+//    Serial.println(spdA1);
+
+
     // Serial.print("A1:   ");
     // Serial.print(spdA1Count);
     // Serial.print("A2:   ");
@@ -1313,10 +1338,10 @@ void count(){
 
     spdA1Count = spdA2Count = spdB1Count = spdB2Count = 0;
 
-    attachInterrupt(2,isr0,CHANGE);
-    attachInterrupt(3,isr1,CHANGE);
-    attachInterrupt(4,isr2,CHANGE);
-    attachInterrupt(5,isr3,CHANGE);
+  attachInterrupt(5, isr0, CHANGE);
+  attachInterrupt(4, isr1, CHANGE);
+  attachInterrupt(3, isr2, CHANGE);
+  attachInterrupt(2, isr3, CHANGE);
 
 
 
@@ -1327,5 +1352,56 @@ long int getTickTime(){
     return millis();
 }
 
+/*
+参    数 ： setPoint:设置值 
+            ActualValue:反馈值 
+            Mode: 1 2 3 4 四个轮子
+返 回 值 ： PIDInc:本次PID增量(+/-)
+*/
+float spdController(float ActualValue, short Mode)
+{
 
+    float PIDInc;  //增量
+  
+  
 
+    switch (Mode)
+    {
+    case 1: 
+        Ek_A1 = setPoint - ActualValue;
+        
+        PIDInc = (KP_A1 * Ek_A1) - (KI_A1 * Ek1_A1) + (KD_A1 * Ek2_A1);
+
+        Ek2_A1 = Ek1_A1;
+        Ek1_A1 = Ek_A1;  
+        break;
+
+    case 2:
+        Ek_A2 = setPoint - ActualValue;
+        PIDInc = (KP_A2 * Ek_A2) - (KI_A2 * Ek1_A2) + (KD_A2 * Ek2_A2);
+      
+        Ek2_A2 = Ek1_A2;
+        Ek1_A2 = Ek_A2;  
+        break;
+    case 3:
+        Ek_B1 = setPoint - ActualValue;
+        PIDInc = (KP_B1 * Ek_B1) - (KI_B1 * Ek1_B1) + (KD_B1 * Ek2_B1);
+
+        Ek2_B1 = Ek1_B1;
+        Ek1_B1 = Ek_B1;  
+        break;
+    case 4:
+        Ek_B2 = setPoint - ActualValue;
+        PIDInc = (KP_B2 * Ek_B2) - (KI_B2 * Ek1_B2) + (KD_B2 * Ek2_B2);
+
+        Ek2_B2 = Ek1_B2;
+        Ek1_B2 = Ek_B2;  
+        break;
+    
+    default:
+        break;
+    }
+                            
+  
+  return PIDInc;
+}
