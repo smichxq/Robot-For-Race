@@ -8,13 +8,13 @@
 #define stp 4
 
 //越线阈值 不超150 前后
-#define tickThreshold 130
+#define tickThreshold 40
 
 //速度
 #define targetSpd 50
 
 //取样周期
-#define smpT 50
+#define smpT 5
 
 //当前方向
 short currentStates;
@@ -23,22 +23,7 @@ short currentStates;
 float setPoint = 9.0;
 
 
-//PWM 50 setPoint 9
- 
-float KP_A1 = 9.70, KI_A1 = 7.50, KD_A1 = 2.5;
 
-
-// setPoint 32 KP 2.02 KD 2.2
-float KP_A2 = 2.02, KI_A2 = 0.00, KD_A2 = 0.0;
-
-float KP_B1 = 2.0, KI_B1 = 0, KD_B1 = 0;
-
-float KP_B2 = 2.0, KI_B2 = 0, KD_B2 = 0;
-
-
-float Ek_A1, Ek_A2, Ek_B1, Ek_B2;                       //当前误差
-float Ek1_A1, Ek1_A2, Ek1_B1, Ek1_B2;                      //前一次误差 e(k-1)
-float Ek2_A1, Ek2_A2, Ek2_B1 ,Ek2_B2;                      //再前一次误差 e(k-2)
 
 
 //传感器接口
@@ -150,22 +135,24 @@ bool onceFlag = true;
 
 //boolean is1 = true;//标记位,用来判定是哪一侧先触线
 
-//朝向左侧传感器
-short is2;
-//朝向右侧传感器
-short is3;
+//其他传感器
+short Sensor_F_L;
+short Sensor_F_R;
 
+short Sensor_R_L;
+short Sensor_R_R;
 
-//朝向左侧传感器
-short is20;
-//朝向右侧传感器
-short is21;
+short Sensor_B_L;
+short Sensor_B_R;
+
+short Sensor_L_L;
+short Sensor_L_R;
 
 //朝向右侧传感器
-short isA12_F_flag = 0;
-short isA13_R_flag = 0;
-short isA14_B_flag = 0;
-short isA15_L_flag = 0;
+short Sensor_F_M;
+short Sensor_R_M;
+short Sensor_B_M;
+short Sensor_L_M;
 
 //全局时间变量
 long int T1 = 0;
@@ -187,6 +174,7 @@ volatile long spdB2Count = 0;
 bool flagA = false;
 bool flagB = false;
 bool flagC = true;
+bool flagD = false;
 
 
 // LobotServoController myse(Serial3);//舵机控制
@@ -198,7 +186,6 @@ void setup() {
   sensorInit();
   IntServiceInit();
   motorInit();
-
   setSpdA1(targetSpd);
   setSpdA2(targetSpd);
   setSpdB1(targetSpd);
@@ -222,21 +209,7 @@ void loop()
   */
 //   pathPlan();//检查路径规划
 //   directions();
-    // currentStates = goStraight;
-    // directions();
-    // delay(2000);
-    // currentStates = goBack;
-    // directions();
-    // delay(2000);
-    currentStates = turnLeft;
-    directions();
-    delay(3000);
-    // currentStates = turnRight;
-    // directions();
-    // delay(2000);
-    currentStates = stp;
-    directions();
-    delay(20000);
+
 
 }
 
@@ -328,7 +301,7 @@ void motorInit(){
 //中断服务初始化
 
 void IntServiceInit(){
-    MsTimer2::set(smpT,count);
+    MsTimer2::set(smpT,pathPlan);
     MsTimer2::start();
 }
 
@@ -789,11 +762,11 @@ void pathPlan()
 
 
   //判断是否经过方格
-  isA12_F_flag = digitalRead(SensorPinF_2);
-  isA14_B_flag = digitalRead(SensorPinB_2);
+  Sensor_F_M = digitalRead(SensorPinF_2);
+  Sensor_B_M = digitalRead(SensorPinB_2);
 
-  isA15_L_flag = digitalRead(SensorPinL_2);
-  isA13_R_flag = digitalRead(SensorPinR_2);
+  Sensor_L_M = digitalRead(SensorPinL_2);
+  Sensor_R_M = digitalRead(SensorPinR_2);
 
   
 
@@ -806,6 +779,7 @@ void pathPlan()
     flagA = false;
     flagB = false;
     flagC = true;
+    flagD = false;
     T1 = T2 = 0;
     if (p == NULL){
         Listflag = false;
@@ -858,14 +832,19 @@ void pathPlan()
   switch (currentStates)
   {
   case goStraight:
-    if (isA12_F_flag == 0)
+    if (Sensor_F_M == 0)
     {
       flagA = true;
     }
-    if (isA14_B_flag == 0 && flagA)
+    if (Sensor_B_M == 0 && flagA)
     {
         //tick-pwm表
-        
+        flagB = true;
+
+    }
+
+    if (Sensor_B_M == 1 && flagB)
+    {
         T2 = getTickTime();
 
         if (flagC)
@@ -876,17 +855,22 @@ void pathPlan()
         
         if (T2 - T1 > tickThreshold)
         {
-            flagB = true;
+            flagD = true;
         }
-
     }
     break;
   case goBack:
-    if (isA14_B_flag == 0)
+    if (Sensor_B_M == 0)
     {
       flagA = true;
     }
-    if (isA12_F_flag == 0 && flagA)
+    if (Sensor_F_M == 0 && flagA)
+    {
+        flagB = true;
+
+    }
+
+    if(Sensor_F_M == 1 && flagB)
     {
         T2 = getTickTime();
 
@@ -898,17 +882,22 @@ void pathPlan()
         
         if (T2 - T1 > tickThreshold)
         {
-            flagB = true;
+            flagD = true;
         }
     }
     break;
 
   case turnLeft:
-    if (isA15_L_flag == 0)
+    if (Sensor_L_M == 0)
     {
       flagA = true;
     }
-    if (isA13_R_flag == 0 && flagA)
+    if (Sensor_R_M == 0 && flagA)
+    {
+        flagB = true;
+    }
+
+    if (Sensor_R_M == 1 && flagB)
     {
         T2 = getTickTime();
 
@@ -918,20 +907,25 @@ void pathPlan()
             flagC = false;
         }
         
-        if (T2 - T1 > tickThreshold)
+        if (T2 - T1 > tickThreshold + 30)
         {
-            flagB = true;
+            flagD = true;
         }
     }
     break;
     
     
   case turnRight:
-    if (isA13_R_flag == 0)
+    if (Sensor_R_M == 0)
     {
       flagA = true;
     }
-    if (isA15_L_flag == 0 && flagA)
+    if (Sensor_L_M == 0 && flagA)
+    {
+        flagB =true;
+    }
+
+    if (Sensor_L_M == 1 && flagB)
     {
         T2 = getTickTime();
 
@@ -941,64 +935,75 @@ void pathPlan()
             flagC = false;
         }
         
-        if (T2 - T1 > tickThreshold)
+        if (T2 - T1 > tickThreshold + 30)
         {
-            flagB = true;
+            flagD = true;
         }
     }
+    
     break;
-
-
-
   case stp:
     Listflag = false;
     flagA = false;
     flagB = false;
+    flagC = true;
+    flagD = false;
     break;
-
 
   default:
     break;
   }
 
 }
-
 /*
 * 路径序列测试函数
 * 将规划好的路径存入该函数
 */
 
 void test(){
-  mission demo[3];
+  mission demo[9];
     //S
   demo[0].A = false;
   demo[0].B = false;
   demo[0].C = false;
     //S
   demo[1].A = false;
-  demo[1].B = true;
+  demo[1].B = false;
   demo[1].C = false;
     //L
-  demo[2].A = false;
+  demo[2].A = true;
   demo[2].B = false;
-  demo[2].C = true;
+  demo[2].C = false;
   //L
-//   demo[3].A = false;
-//   demo[3].B = false;
-//   demo[3].C = false;
+  demo[3].A = true;
+  demo[3].B = false;
+  demo[3].C = false;
 
-//     //Right
-//   demo[4].A = false;
-//   demo[4].B = false;
-//   demo[4].C = false;
+    //Right
+  demo[4].A = true;
+  demo[4].B = true;
+  demo[4].C = false;
+      //Right
+  demo[5].A = true;
+  demo[5].B = true;
+  demo[5].C = false;
 
-//     //stp
-//   demo[5].A = false;
-//   demo[5].B = true;
-//   demo[5].C = true;
+      //Back
+  demo[6].A = false;
+  demo[6].B = true;
+  demo[6].C = false;
+      //Back
+  demo[7].A = false;
+  demo[7].B = true;
+  demo[7].C = false;
+
+    //stp
+  demo[8].A = false;
+  demo[8].B = false;
+  demo[8].C = true;
 
 
-  testMission =  createMissionList(3,demo);
+  testMission =  createMissionList(9,demo);
 
   
 }
@@ -1013,241 +1018,6 @@ void test(){
 
 void stateFix()
 {
-  //传感器正常情况下是1 遇到黑色为0
-
-  //朝向左侧传感器
-  is2 = digitalRead(2);
-  //朝向右侧传感器
-  is3 = digitalRead(3);
-  
-  
-
-  //朝向左侧传感器
-  is20 = digitalRead(20);
-  //朝向右侧传感器
-  is21 = digitalRead(21);
-
-
-
-  switch (currentStates)
-  {
-  case goStraight:
-    //当前方向 偏右(左侧先触碰)
-    /*
-    20  21
-    1    1
-    0    1
-    0    0<-这一状态可能要加入调整
-    1    1
-    */
-    
-
-    if (!is20 &&  is21)
-    {
-      //short diff;
-      
-      spdA2 += 2;
-
-      //spdA2Count++;
-      
-    }
-
-    //如果方向为goStraight 偏左(右侧先触碰)
-
-    /*
-    20  21
-    1    1
-    1    0
-    0    0<-这一状态可能要加入调整
-    1    1
-    */
-    if (!is21 &&  is20)
-    {
-      //short diff;
-      
-      spdA1 += 2;
-
-      //spdA2Count++;
-      
-    }
-
-
-    //恢复正常
-    if (is21 && is20)
-    {
-      spdA1 = spdA2 = spdB1;
-    }
-    
-    break;
-  case goBack:
-    //当前方向偏右(左侧先触)
-    /*
-    20  21
-    1    1
-    0    1
-    0    0
-    1    1
-    */
-
-   if (!is20 && is21)
-   {
-     spdB1 += 2;
-   }
-
-   //当前方向偏左(右侧先触)
-    /*
-    20  21
-    1    1
-    1    0
-    0    0<-这一状态可能要加入调整
-    1    1
-    */
-   if (!is21 && is20)
-   {
-     spdB2 += 2;
-   }
-
-   //恢复正常
-   if (is20 && is21)
-   {
-     spdB1 = spdB2 = spdA2;
-   }
-
-    break;
-  case turnLeft:
-    //当前方向偏左(右侧先触)
-    /*
-    2    3
-    1    1
-    1    0
-    0    0<-这一状态可能要加入调整
-    1    1
-    */
-
-   if (!is3 && is2)
-   {
-     spdB1 += 2;
-   }
-
-   //当前方向偏右(左侧先触)
-    /*
-    2    3
-    1    1
-    0    1
-    0    0<-这一状态可能要加入调整
-    1    1
-    */
-   if (!is2 && is3)
-   {
-     spdA1 += 2;
-   }
-
-   //恢复正常
-   if (is2 && is3)
-   {
-     spdA1 = spdB1 = spdA2;
-   }
-    
-    break;
-  case turnRight:
-    //当前方向偏右(左侧先触)
-    /*
-    2    3
-    1    1
-    0    1
-    0    0<-这一状态可能要加入调整
-    1    1
-    */
-
-   if (!is2 && is3)
-   {
-     spdB2 += 2;
-   }
-
-   //当前方向偏左(右侧先触)
-    /*
-    2    3
-    1    1
-    1    0
-    0    0<-这一状态可能要加入调整
-    1    1
-    */
-   if (!is3 && is2)
-   {
-     spdA2 += 2;
-   }
-
-   if (is2 && is3)
-   {
-     spdA2 = spdB2 = spdB1;
-   }
-   
-    break;
-  
-  default:
-    break;
-  }
-/*=============================早期版本可能后期会有用========================*/
-/*
-  //如果方向为goStraight 偏右(左侧先触碰)
-  if (!is20 &&  is21)
-  {
-    //short diff;
-    
-    spdA2 += 2;
-
-    //spdA2Count++;
-    
-  }
-
-  //如果当前朝向偏左(右侧先触碰)
-  if (!is21 && is20)
-  {
-    spdA1 += 2;
-  }
-  
-  //如果位置纠正了
-  if (!is20 && !is21)
-  {
-    //速度恢复
-    spdA2 = spdA1;
-
-    //spdA2Count = 0;
-  }
-
-
-
-
-if (currentState == turnLeft || currentState == turnRight)
-{
-  
-    //如果当前朝向偏右(左侧先触)
-  if (!is2 &&  is3)
-  {
-    //short diff;
-    
-    spdA1 += 2;
-
-    //spdA2Count++;
-    
-  }
-  //如果当前朝向偏左(右侧先触)
-  if (!is3 && is2)
-  {
-    
-  }
-  
-
-
-  //如果位置纠正了,或者同时触碰
-  if (!is2 && !is3)
-  {
-    //速度恢复
-    spdA2 = spdA1;
-
-    //spdA2Count = 0;
-  }
-*/
 
 }
 
@@ -1350,58 +1120,4 @@ void count(){
 
 long int getTickTime(){
     return millis();
-}
-
-/*
-参    数 ： setPoint:设置值 
-            ActualValue:反馈值 
-            Mode: 1 2 3 4 四个轮子
-返 回 值 ： PIDInc:本次PID增量(+/-)
-*/
-float spdController(float ActualValue, short Mode)
-{
-
-    float PIDInc;  //增量
-  
-  
-
-    switch (Mode)
-    {
-    case 1: 
-        Ek_A1 = setPoint - ActualValue;
-        
-        PIDInc = (KP_A1 * Ek_A1) - (KI_A1 * Ek1_A1) + (KD_A1 * Ek2_A1);
-
-        Ek2_A1 = Ek1_A1;
-        Ek1_A1 = Ek_A1;  
-        break;
-
-    case 2:
-        Ek_A2 = setPoint - ActualValue;
-        PIDInc = (KP_A2 * Ek_A2) - (KI_A2 * Ek1_A2) + (KD_A2 * Ek2_A2);
-      
-        Ek2_A2 = Ek1_A2;
-        Ek1_A2 = Ek_A2;  
-        break;
-    case 3:
-        Ek_B1 = setPoint - ActualValue;
-        PIDInc = (KP_B1 * Ek_B1) - (KI_B1 * Ek1_B1) + (KD_B1 * Ek2_B1);
-
-        Ek2_B1 = Ek1_B1;
-        Ek1_B1 = Ek_B1;  
-        break;
-    case 4:
-        Ek_B2 = setPoint - ActualValue;
-        PIDInc = (KP_B2 * Ek_B2) - (KI_B2 * Ek1_B2) + (KD_B2 * Ek2_B2);
-
-        Ek2_B2 = Ek1_B2;
-        Ek1_B2 = Ek_B2;  
-        break;
-    
-    default:
-        break;
-    }
-                            
-  
-  return PIDInc;
 }
