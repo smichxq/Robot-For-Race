@@ -136,28 +136,47 @@ bool onceFlag = true;
 //boolean is1 = true;//标记位,用来判定是哪一侧先触线
 
 //其他传感器
-short Sensor_F_L;
-short Sensor_F_R;
+short Sensor_F_L = 1;
+short Sensor_F_R = 1;
 
-short Sensor_R_L;
-short Sensor_R_R;
+short Sensor_R_L = 1;
+short Sensor_R_R = 1;
 
-short Sensor_B_L;
-short Sensor_B_R;
+short Sensor_B_L = 1;
+short Sensor_B_R = 1;
 
-short Sensor_L_L;
-short Sensor_L_R;
+short Sensor_L_L = 1;
+short Sensor_L_R = 1;
 
-//朝向右侧传感器
-short Sensor_F_M;
-short Sensor_R_M;
-short Sensor_B_M;
-short Sensor_L_M;
+//中间传感器
+short Sensor_F_M = 1;
+short Sensor_R_M = 1;
+short Sensor_B_M = 1;
+short Sensor_L_M = 1;
 
+/*=======偏移修正========*/
+
+//偏移修正因子
+//前后 0.150
+//左右 0.1
+float FixFctr_GB = 0.150;
+float FixFctr_LR = 0.1;
+//偏移修正控制因子
+bool ctrlFlag = true;
+bool SensorFlagL = false;
+bool FixCtrlFlag = false;
+bool SensorFlagR = false;
+long Fix_T1 = 0;
+long Fix_T2 = 0;
+
+/*=======偏移修正========*/
+
+
+/*=======路径规划========*/
 //全局时间变量
 long int T1 = 0;
 long int T2 = 0;
-
+/*=======路径规划========*/
 
 //全局速度变量
 short spdA1 = 0;
@@ -184,22 +203,21 @@ void setup() {
   test();
   p = testMission;
   sensorInit();
-  IntServiceInit();
+//   IntServiceInit();
+  //前后 A2 +3 B2 +3
+  //左右 A1 +7.2 B1 +4 B2 +7.2
   motorInit();
   setSpdA1(targetSpd);
   setSpdA2(targetSpd);
   setSpdB1(targetSpd);
   setSpdB2(targetSpd);
 //   Serial.begin(9600);
+  delay(500);
 
 }  
 void loop()
 {
-    if (onceFlag)
-    {
-        delay(500);
-        onceFlag = false;
-    }
+
     
     
 
@@ -208,7 +226,7 @@ void loop()
   在命令电机移动directions
   */
 //   pathPlan();//检查路径规划
-//   directions();
+  directions();
 
 
 }
@@ -301,7 +319,7 @@ void motorInit(){
 //中断服务初始化
 
 void IntServiceInit(){
-    MsTimer2::set(smpT,pathPlan);
+    MsTimer2::set(smpT,count);
     MsTimer2::start();
 }
 
@@ -1007,13 +1025,393 @@ void test(){
 
 /*
 * 偏移检测
-* 根据时间来确定偏移度(已弃用，外部中断引脚不够)
+* 根据时间来确定偏移度
 * 对当前状态进行纠正
 * 使用定时中断
 */
 
 void stateFix()
 {
+
+    
+    Sensor_F_L = digitalRead(SensorPinF_1);
+    Sensor_F_R = digitalRead(SensorPinF_3);
+
+    Sensor_B_L = digitalRead(SensorPinB_1);
+    Sensor_B_R = digitalRead(SensorPinB_3);
+
+    Sensor_L_L = digitalRead(SensorPinL_1);
+    Sensor_L_R = digitalRead(SensorPinL_3);
+
+    Sensor_R_L = digitalRead(SensorPinR_1);
+    Sensor_R_R = digitalRead(SensorPinR_3);
+
+    Sensor_F_M = digitalRead(SensorPinF_2);
+    Sensor_B_M = digitalRead(SensorPinB_2);
+    Sensor_L_M = digitalRead(SensorPinL_2);
+    Sensor_R_M = digitalRead(SensorPinR_2);
+    
+
+
+
+
+
+
+//前后左右
+    switch (currentStates)
+    {
+
+    case goStraight:
+        //偏右
+        if (!Sensor_F_L && Sensor_F_R && ctrlFlag)
+        {
+
+            SensorFlagL = true;//先触碰一侧
+            ctrlFlag = false;//计时控制因子
+            Fix_T1 = getTickTime();
+            FixCtrlFlag = true;
+        }
+
+        //偏左
+        if (!Sensor_F_R && Sensor_F_L && ctrlFlag) 
+        {
+            SensorFlagR = true;//标记先触碰一侧
+            ctrlFlag = false;//计时控制因子
+            Fix_T1 = getTickTime();
+            FixCtrlFlag = true;
+        }
+
+
+        //偏左未修正状态
+        if (SensorFlagR)
+        {
+
+            Fix_T2 = FixFctr_GB*(getTickTime() - Fix_T1);
+            //减速修正
+            setSpdA1(targetSpd + Fix_T2);
+            setSpdB1(targetSpd + Fix_T2);
+            //加速修正
+            setSpdA2(targetSpd - Fix_T2);
+            setSpdB2(targetSpd - Fix_T2);
+
+        }
+
+        
+
+
+        //偏左已修正
+        if (SensorFlagR && Sensor_F_L && Sensor_F_R)
+        {
+            // FixCtrlFlag = false;
+            // SensorFlagL = false;
+            Fix_T1 = Fix_T2 = 0;
+            ctrlFlag = true;
+            SensorFlagR = false;
+            //减速修正
+            setSpdA2(targetSpd + 3);
+            setSpdB1(targetSpd);
+            //加速修正
+            setSpdA1(targetSpd);
+            setSpdB2(targetSpd + 3);
+
+        }
+        
+        
+        
+
+        //偏右未纠正
+        if (SensorFlagL)
+        {   //注意类型 
+            Fix_T2 = FixFctr_GB*(getTickTime() - Fix_T1);
+            //减速修正
+            setSpdA1(targetSpd - Fix_T2);
+            setSpdB1(targetSpd - Fix_T2);
+            //加速修正
+            setSpdA2(targetSpd + Fix_T2);
+            setSpdB2(targetSpd + Fix_T2);
+
+        }
+
+
+        //偏右已纠正
+        if (SensorFlagL && Sensor_F_R && Sensor_F_L)
+        {
+
+            SensorFlagL = false;
+            ctrlFlag = true;
+            Fix_T1 = Fix_T2 = 0;
+            //减速恢复
+            setSpdA1(targetSpd);
+            setSpdB2(targetSpd + 3);
+            //加速恢复
+            setSpdA2(targetSpd + 3);
+            setSpdB1(targetSpd);
+
+        }
+
+        break;
+        
+    case goBack:
+        // Serial.print("左传感器: ");
+        // Serial.print(Sensor_B_L);
+        // Serial.print("  右传感器:    ");
+        // Serial.println(Sensor_B_R);
+        //偏右
+        if (!Sensor_B_L && Sensor_B_R && ctrlFlag)
+        {
+
+            SensorFlagL = true;//标记先触碰一侧
+            ctrlFlag = false;//计时控制因子
+            Fix_T1 = getTickTime();
+            // Serial.println(" =========== 偏右  =============");
+
+        }
+
+        //偏左
+        if (!Sensor_B_R && Sensor_B_L && ctrlFlag) 
+        {
+            SensorFlagR = true;//标记先触碰一侧
+            ctrlFlag = false;//计时控制因子
+            Fix_T1 = getTickTime();
+            // Serial.println(" ============ 偏左  =============");
+        }
+
+
+        //偏左未修正
+
+        if (SensorFlagR)
+        {
+            Fix_T2 = FixFctr_GB*(getTickTime() - Fix_T1);
+            //减速修正
+            setSpdA2(targetSpd + Fix_T2);
+            setSpdB1(targetSpd - Fix_T2);
+            //加速修正
+            setSpdA1(targetSpd - Fix_T2);
+            setSpdB2(targetSpd + Fix_T2);
+            // Serial.println(" ============= 偏左修正中 ================= ");
+
+            //Serial.print("A2+++ B2+++ A1--- B1---   ");
+        }
+
+
+        //偏左已修正
+        if (SensorFlagR && Sensor_B_L && Sensor_B_R && Sensor_B_M)
+        {
+            SensorFlagR = false;
+            ctrlFlag = true;
+            // Fix_T1 = Fix_T2 = 0;
+            //Serial.println("=================偏左恢复正常===================");
+            //减速修正
+            setSpdA2(targetSpd + 3);
+            setSpdB1(targetSpd);
+            //加速修正
+            setSpdA1(targetSpd);
+            setSpdB2(targetSpd + 3);
+
+        }
+        
+        
+        
+
+        //偏右未纠正
+        if (SensorFlagL)
+        {   //注意类型 
+            Fix_T2 = FixFctr_GB*(getTickTime() - Fix_T1);
+            //减速修正
+            setSpdA1(targetSpd + Fix_T2);
+            setSpdB2(targetSpd - Fix_T2);
+            //加速修正
+            setSpdA2(targetSpd - Fix_T2);
+            setSpdB1(targetSpd + Fix_T2);
+
+        }
+        //偏右已纠正
+        if (SensorFlagL && Sensor_B_R && Sensor_B_L && Sensor_B_M)
+        {
+            SensorFlagL = false;
+            ctrlFlag = true;
+            // Fix_T1 = Fix_T2 = 0;
+
+            //减速恢复
+            setSpdA1(targetSpd);
+            setSpdB2(targetSpd + 3);
+            //加速恢复
+            setSpdA2(targetSpd + 3);
+            setSpdB1(targetSpd);
+
+        }
+        break;
+
+    case turnLeft:
+
+        //偏右
+        if (!Sensor_L_L && Sensor_L_R && ctrlFlag)
+        {
+
+            SensorFlagL = true;//标记偏向
+            ctrlFlag = false;//计时控制因子
+            Fix_T1 = getTickTime();
+            // Serial.println("偏右");
+        }
+
+        //偏左
+        if (!Sensor_L_R && Sensor_L_L && ctrlFlag) 
+        {
+            SensorFlagR = true;//标记偏向哪一侧
+            ctrlFlag = false;//计时控制因子
+            Fix_T1 = getTickTime();
+            // Serial.println("偏左");
+        }
+
+
+        //偏左未修正
+
+        if (SensorFlagR)
+        {
+            Fix_T2 = FixFctr_LR*(getTickTime() - Fix_T1);
+            //减速修正
+            setSpdA1(targetSpd - Fix_T2);
+            setSpdB2(targetSpd + Fix_T2);
+            //加速修正
+            setSpdA2(targetSpd - Fix_T2);
+            setSpdB1(targetSpd + Fix_T2);
+            // Serial.println("偏左修正中");
+        }
+
+
+        //偏左已修正
+        if (SensorFlagR && Sensor_L_L && Sensor_L_R && Sensor_L_M)
+        {
+            SensorFlagR = false;
+            ctrlFlag = true;
+            // Fix_T1 = Fix_T2 = 0;
+            //减速修正
+            setSpdA1(targetSpd + 7.2);
+            setSpdB2(targetSpd + 7.2);
+            //加速修正
+            setSpdA2(targetSpd);
+            setSpdB1(targetSpd + 4);
+            
+
+        }
+        
+        
+        
+
+        //偏右未纠正
+        if (SensorFlagL)
+        {   //注意类型 
+            Fix_T2 = FixFctr_LR*(getTickTime() - Fix_T1);
+            //减速修正
+            setSpdA2(targetSpd + Fix_T2);
+            setSpdB1(targetSpd - Fix_T2);
+            //加速修正
+            setSpdA1(targetSpd + Fix_T2);
+            setSpdB2(targetSpd - Fix_T2);
+            // Serial.println("偏右修正中");
+
+        }
+        //偏右已纠正
+        if (SensorFlagL && Sensor_L_R && Sensor_L_L && Sensor_L_M)
+        {
+            SensorFlagL = false;
+            ctrlFlag = true;
+            // Fix_T1 = Fix_T2 = 0;
+
+            //减速恢复
+            setSpdA2(targetSpd);
+            setSpdB1(targetSpd);
+            //加速恢复
+            setSpdA1(targetSpd);
+            setSpdB2(targetSpd);
+
+        }
+        break;
+
+    case turnRight:
+        //偏右
+        if (!Sensor_R_L && Sensor_R_R && ctrlFlag)
+        {
+
+            SensorFlagL = true;//标记偏向
+            ctrlFlag = false;//计时控制因子
+            Fix_T1 = getTickTime();
+        }
+
+        //偏左
+        if (!Sensor_R_R && Sensor_R_L && ctrlFlag) 
+        {
+            SensorFlagR = true;//标记偏向哪一侧
+            ctrlFlag = false;//计时控制因子
+            Fix_T1 = getTickTime();
+        }
+
+
+        //偏左未修正
+
+        if (SensorFlagR)
+        {
+            Fix_T2 = FixFctr_LR*(getTickTime() - Fix_T1);
+            //减速修正
+            setSpdA1(targetSpd + Fix_T2);
+            setSpdB2(targetSpd - Fix_T2);
+            //加速修正
+            setSpdA2(targetSpd + Fix_T2);
+            setSpdB1(targetSpd - Fix_T2);
+        }
+
+
+        //偏左已修正
+        if (SensorFlagR && Sensor_R_L && Sensor_R_R && Sensor_R_M)
+        {
+            SensorFlagR = false;
+            ctrlFlag = true;
+            Fix_T1 = Fix_T2 = 0;
+            //减速修正
+            setSpdA1(targetSpd);
+            setSpdB2(targetSpd);
+            //加速修正
+            setSpdA2(targetSpd);
+            setSpdB1(targetSpd);
+
+        }
+        
+        
+        
+
+        //偏右未纠正
+        if (SensorFlagL)
+        {   //注意类型 
+            Fix_T2 = FixFctr_LR*(getTickTime() - Fix_T1);
+            //减速修正
+            setSpdA2(targetSpd - Fix_T2);
+            setSpdB1(targetSpd + Fix_T2);
+            //加速修正
+            setSpdA1(targetSpd - Fix_T2);
+            setSpdB2(targetSpd + Fix_T2);
+
+        }
+        //偏右已纠正
+        if (SensorFlagL && Sensor_R_R && Sensor_R_L && Sensor_R_M)
+        {
+            SensorFlagL = false;
+            ctrlFlag = true;
+            Fix_T1 = Fix_T2 = 0;
+
+            //减速恢复
+            setSpdA2(targetSpd);
+            setSpdB1(targetSpd);
+            //加速恢复
+            setSpdA1(targetSpd);
+            setSpdB2(targetSpd);
+        }
+        break;
+    
+    default:
+        break;
+    }
+
+
 
 }
 
