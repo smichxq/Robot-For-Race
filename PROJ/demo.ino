@@ -773,7 +773,7 @@ void pathPlan()
  
 
   //经过方格，移动到下一个路径
-  if (flagB && flagA)
+  if (flagA && flagD)
   {
     p = p->next;
     flagA = false;
@@ -792,9 +792,6 @@ void pathPlan()
   
   
 
-  // while (p)
-  // {
-    //Serial.println(p->A + p->B + p->C);
 
     //前
     if (!(p->A) && !(p->B) && Listflag)
@@ -826,7 +823,6 @@ void pathPlan()
     {
         currentStates = stp;
     }
-  // }
 
    //判断是否经过方格
   switch (currentStates)
