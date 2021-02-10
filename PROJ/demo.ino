@@ -154,13 +154,13 @@ short Sensor_R_M = 1;
 short Sensor_B_M = 1;
 short Sensor_L_M = 1;
 
-/*=======偏移修正========*/
+/*========================================================================偏移修正======================================================*/
 
 //偏移修正因子
 //前后 0.150
 //左右 0.1
 float FixFctr_GB = 0.150;
-float FixFctr_LR = 0.1;
+float FixFctr_LR = 0.05;
 //偏移修正控制因子
 bool ctrlFlag = true;
 bool SensorFlagL = false;
@@ -169,14 +169,14 @@ bool SensorFlagR = false;
 long Fix_T1 = 0;
 long Fix_T2 = 0;
 
-/*=======偏移修正========*/
+/*=========================================================================偏移修正=======================================================*/
 
 
-/*=======路径规划========*/
-//全局时间变量
+/*=========================================================================路径规划=======================================================*/
+//全局时间变量(路径规划)
 long int T1 = 0;
 long int T2 = 0;
-/*=======路径规划========*/
+/*=========================================================================路径规划=======================================================*/
 
 //全局速度变量
 short spdA1 = 0;
@@ -203,14 +203,15 @@ void setup() {
   test();
   p = testMission;
   sensorInit();
-//   IntServiceInit();
+  IntServiceInit();
   //前后 A2 +3 B2 +3
-  //左右 A1 +7.2 B1 +4 B2 +7.2
+  //左 A1 +7.2 B1 +4 B2 +7.2
+  //右 A1 +7.3 B1 +4.9 B2 +10.7
   motorInit();
   setSpdA1(targetSpd);
-  setSpdA2(targetSpd);
+  setSpdA2(targetSpd + 3);
   setSpdB1(targetSpd);
-  setSpdB2(targetSpd);
+  setSpdB2(targetSpd + 3);
 //   Serial.begin(9600);
   delay(500);
 
@@ -225,7 +226,8 @@ void loop()
   先使用路径规划pathPlan
   在命令电机移动directions
   */
-//   pathPlan();//检查路径规划
+  pathPlan();//检查路径规划
+//   stateFix();
   directions();
 
 
@@ -319,7 +321,7 @@ void motorInit(){
 //中断服务初始化
 
 void IntServiceInit(){
-    MsTimer2::set(smpT,count);
+    MsTimer2::set(smpT,stateFix);
     MsTimer2::start();
 }
 
@@ -1368,11 +1370,11 @@ void stateFix()
             ctrlFlag = true;
             Fix_T1 = Fix_T2 = 0;
             //减速修正
-            setSpdA1(targetSpd);
-            setSpdB2(targetSpd);
+            setSpdA1(targetSpd + 7.3);
+            setSpdB2(targetSpd + 10.7);
             //加速修正
             setSpdA2(targetSpd);
-            setSpdB1(targetSpd);
+            setSpdB1(targetSpd + 4.9);
 
         }
         
@@ -1400,10 +1402,10 @@ void stateFix()
 
             //减速恢复
             setSpdA2(targetSpd);
-            setSpdB1(targetSpd);
+            setSpdB1(targetSpd + 4.9);
             //加速恢复
-            setSpdA1(targetSpd);
-            setSpdB2(targetSpd);
+            setSpdA1(targetSpd + 7.3);
+            setSpdB2(targetSpd + 10.7);
         }
         break;
     
