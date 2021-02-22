@@ -110,6 +110,25 @@ typedef struct missions
   
 }missions;
 
+
+
+
+/*===================================================UART===================================================*/
+// byte REQ_CODE[] = [65,66];//服务请求码
+
+byte UART_DATABUF[50];//数据缓冲区
+
+byte UART_DECODE[8] = {97,98,99,100,101,102,103,104};//请求服务确认码
+
+byte UART_TARGET[6];//任务码
+
+byte UART_DELTA[2];//当前误差
+/*===================================================UART===================================================*/
+
+
+
+
+
 /*=====================声明一个全局的任务序列missions[N]=================*/
 
 missions currentMissions[14];
@@ -1442,6 +1461,162 @@ void angleTest(){
     delay(2000);
   }
 
+}
+
+
+/*
+*获取通信数据
+*阻塞
+*/
+bool get_data(){
+    int i = 0;
+    byte temp;
+    bool temp_flag = false;
+
+    if (Serial.available()<0){
+        return false;
+    }
+
+    while (Serial.available()>0){
+        // 每次只读取一个字节    
+        temp = Serial.read();
+        if (temp_flag || temp == 0x23)
+        {
+            UART_DATABUF[i] = temp;
+        }
+//        Serial.write(UART_DATABUF[i]);
+//        Serial.write("  ");
+        i++;
+     }
+     Serial.flush();
+     return true;
+ }
+
+/*
+*数据解码
+*
+*/
+bool decodes(){
+    short i = 0;
+
+    
+    while (UART_DATABUF[i] != 36 && i<51){
+        
+        
+        //解码#a123321$
+        if (UART_DATABUF[i] == UART_DECODE[0] && UART_DATABUF[i+7] == 36){
+            //confmCode:a
+            decode_a(i);//数据解码存储
+            
+            return false;
+
+        }
+        //          b$             b@&x&y$            b&x&y&xxx$
+        else if (UART_DATABUF[i] == UART_DECODE[1]){
+            //扫描下一个
+            if (UART_DATABUF[i+1] == 36){
+                //切换状态,车辆移动至下一格子
+            }
+            //抓取当前的
+            if (UART_DATABUF[i+2] == 64){
+                //解码,将数据存放至UART_DELTA[2]中
+                //区分b@& - 1 2 & + 2 2$
+
+            }
+            //抓取并存放路径规划
+            if (UART_DATABUF[i+2] == 38){
+                //解码,更新路径,存放偏差
+            }
+            //confmCode:b
+
+        }
+        else if (UART_DATABUF[i] == UART_DECODE[2]){
+            //confmCode:c
+        }
+        else if (UART_DATABUF[i] == UART_DECODE[3]){
+            //confmCode:d
+        }
+        else if (UART_DATABUF[i] == UART_DECODE[4]){
+            //confmCode:e
+        }
+        else if (UART_DATABUF[i] == UART_DECODE[5]){
+            //confmCode:f
+        }
+        else if (UART_DATABUF[i] == UART_DECODE[6]){
+            //confmCode:g
+        }
+        else{
+            //confmCodeERROR
+        }
+        i++;
+    }
+    return true;
+}
+
+
+
+//请求服务,参数为请求码,反馈码
+void reqs(char* req_code,char* resp_code){
+    int i = 0;
+    bool uart_flag = true;
+
+    while (uart_flag)
+    {
+        Serial.flush();
+
+        Serial.write(req_code,3);
+
+        // Serial.write("#B$");
+        //没有收到数据就跳出
+        if (!get_data()){
+            continue;
+        }
+
+        uart_flag = respServices(decodes(),resp_code);
+        
+    }
+
+}
+
+//任务码本地存储
+void decode_a(short i){
+    i++;
+    int j = 0;
+    while (UART_DATABUF[i]!=36){
+      UART_TARGET[j] = UART_DATABUF[i];
+      i++;
+      j++;
+    }
+
+    // delay(100000);
+    // delay(2);
+}
+
+//反馈服务
+bool respServices(bool flag,char* resp_code){
+    int i = 0;
+
+    if(!flag){
+        while (i < 20)
+        {      
+            Serial.write(resp_code,4);
+            i++;
+            //中断服务加入特殊情况,如果收到openmv特殊请求,重新运行请求服务
+        }
+        
+
+        return flag;
+    }
+    
+    return flag;
+}
+
+
+    
+
+//数据解码服务
+void decode_b(int i){
+    
 }
 
 
