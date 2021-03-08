@@ -3,24 +3,62 @@
 //方向
 #define goStraight 0
 #define goBack 1
-#define turnLeft 2
-#define turnRight 3
+#define Left 2
+#define Right 3
 #define stp 4
 
+//直线微调前压线
+#define micro_line_F 5
+//直线微调后压线
+#define micro_line_B 6
+//直线微调左压线
+#define micro_line_L 7
+//直线微调右压线
+#define micro_line_R 8
+
+
+//中间压线前
+#define mid_line_F 9
+//中间压线后
+#define mid_line_B 10
+//中间压线左
+#define mid_line_L 11
+//中间压线右
+#define mid_line_R 12
+
 //越线阈值 不超150 前后
-#define tickThreshold 40
+#define tickThreshold 10
 
 //速度
-#define targetSpd 50
+int targetSpd = 100;
 
 //取样周期
-#define smpT 5
+#define smpT 100
 
 //当前方向
 short currentStates;
+short lastStates = Left;
 
 //PID控制器
-float setPoint = 9.0;
+float setPoint_A1 = 140.0;
+float setPoint_A2 = 140.0;
+float setPoint_B1 = 140.0;
+float setPoint_B2 = 140.0;
+
+ 
+float KP_A1 = 1.35, KI_A1 = 0.00, KD_A1 = 0.01;
+
+
+float KP_A2 = 1.29, KI_A2 = 0.00, KD_A2 = 0.01;
+
+float KP_B1 = 1.30, KI_B1 = 0.00, KD_B1 = 0.01;
+
+float KP_B2 = 1.30, KI_B2 = 0.00, KD_B2 = 0.01;
+
+
+float Ek_A1, Ek_A2, Ek_B1, Ek_B2;                       //当前误差
+float Ek1_A1, Ek1_A2, Ek1_B1, Ek1_B2;                      //前一次误差 e(k-1)
+float Ek2_A1, Ek2_A2, Ek2_B1 ,Ek2_B2;                      //再前一次误差 e(k-2)
 
 
 
@@ -83,9 +121,9 @@ typedef struct mission
   * 前期只有四个方向
   * 
   * 任务结构体
-  *  A   B   C 3bit
+  *  A   B   C   D   3bit
   *  AB两位为方向　　  
-  * goStraight  goBack  turnLeft  turnRight
+  * goStraight  goBack  Left  Right
   *    00　       01      10         11
   * Ｃ为模式
   * 方格模式  直线模式
@@ -94,6 +132,8 @@ typedef struct mission
   bool A;
   bool B;
   bool C;
+  bool D;
+  bool E;
   struct mission* next;
 }mission;
 
@@ -178,8 +218,8 @@ short Sensor_L_M = 1;
 //偏移修正因子
 //前后 0.150
 //左右 0.1
-float FixFctr_GB = 0.150;
-float FixFctr_LR = 0.05;
+float FixFctr_GB = 0.920;
+float FixFctr_LR = 0.92;
 //偏移修正控制因子
 bool ctrlFlag = true;
 bool SensorFlagL = false;
@@ -215,6 +255,22 @@ bool flagC = true;
 bool flagD = false;
 
 
+bool micro_line_flag = false;
+//微调
+bool micro_flag_F = false;
+bool micro_flag_B = false;
+bool micro_flag_L = false;
+bool micro_flag_R = false;
+
+
+bool mid_line_flag = false;
+//中线
+bool mid_flag_F = false;
+bool mid_flag_B = false;
+bool mid_flag_L = false;
+bool mid_flag_R = false;
+
+
 // LobotServoController myse(Serial3);//舵机控制
 
 void setup() {
@@ -222,7 +278,7 @@ void setup() {
   test();
   p = testMission;
   sensorInit();
-  IntServiceInit();
+//  IntServiceInit();
   //前后 A2 +3 B2 +3
   //左 A1 +7.2 B1 +4 B2 +7.2
   //右 A1 +7.3 B1 +4.9 B2 +10.7
@@ -231,24 +287,44 @@ void setup() {
   setSpdA2(targetSpd + 3);
   setSpdB1(targetSpd);
   setSpdB2(targetSpd + 3);
-//   Serial.begin(9600);
+//  Serial.begin(9600);
+//  Serial.println("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
   delay(500);
 
 }  
 void loop()
-{
-
-    
-    
+{    
 
   /*
   先使用路径规划pathPlan
-  在命令电机移动directions
+  再命令电机移动directions
   */
-  pathPlan();//检查路径规划
-//   stateFix();
+//  if (p){
+//    Serial.print(p->A);
+//    Serial.print(p->B);
+//    Serial.print(p->C);
+//    Serial.println(p->D);
+//    Serial.println("=======================");
+//    p = p->next;
+//  }
+  
+  
+  pathPlan();
   directions();
-
+  stateFix();
+//  delay(500);
+//   Sensor_F_M = digitalRead(SensorPinF_2);
+//   if (p->C && Sensor_F_M){
+//       spdA1 = spdA2 = spdB1 = spdB2 = 65;
+//       while(Sensor_F_M){
+//           currentStates = goStraight;
+//           directions();
+//          
+//       }
+//       spdA1 = spdA2 = spdB1 = spdB2 = 0;
+//       currentStates = stp;
+//   }
+  
 
 }
 
@@ -340,7 +416,7 @@ void motorInit(){
 //中断服务初始化
 
 void IntServiceInit(){
-    MsTimer2::set(smpT,stateFix);
+    MsTimer2::set(smpT,acc);
     MsTimer2::start();
 }
 
@@ -544,25 +620,43 @@ void motorB2(){
 * 电机移动命令
 * goStraight 前
 * goBack 后
-* turnLeft 左平移
-* turnRight 右平移
+* Left 左平移
+* Right 右平移
 *
 * 参数为方向,速度
 * 目前只有四个方向
 * 后期增加其他方向
 */
 void directions(){
-  short dirct = currentStates;
+    
+    short dirct = currentStates;
+    //电机换向保护
+//    if (dirct != lastStates){
+//        setSpdA1(0);
+//        setSpdA2(0);
+//        setSpdB1(0);
+//        setSpdB2(0);
+//        motorA1PNS(S);
+//        motorA2PNS(S);
+//        motorB1PNS(S);
+//        motorB2PNS(S);
+//        delay(200);
+//        setSpdA1(spdA1);
+//        setSpdA2(spdA2);
+//        setSpdB1(spdB1);
+//        setSpdB2(spdB2);
+//    }
+//    lastStates = dirct;
 
-  //电机换向保护
-    // motorA1PNS(S);
-    // motorA2PNS(S);
-    // motorB1PNS(S);
-    // motorB2PNS(S);
+
+  
+
 
     switch (dirct)
     {
     case goStraight:
+
+
         //printf("goStraight\n");
         motorA1PNS(P);
         motorA1();
@@ -577,8 +671,25 @@ void directions(){
         motorB2();
         
         break;
+      case micro_line_F:
+        //printf("goStraight\n");
+
+        motorA1PNS(P);
+        motorA1();
+
+        motorA2PNS(P);
+        motorA2();
+
+        motorB1PNS(P);
+        motorB1();
+
+        motorB2PNS(P);
+        motorB2();
+        
+        break;
+
     case goBack:
-        //printf("goBack\n");
+
         motorA1PNS(N);
         motorA1();
 
@@ -591,8 +702,27 @@ void directions(){
         motorB2PNS(N);
         motorB2();
         break;
-    case turnLeft:
-        //printf("turnLeft\n");
+
+    case micro_line_B:
+        //printf("goStraight\n");
+        motorA1PNS(N);
+        motorA1();
+
+        motorA2PNS(N);
+        motorA2();
+
+        motorB1PNS(N);
+        motorB1();
+
+        motorB2PNS(N);
+        motorB2();
+        
+        break;
+    case Left:
+
+    //左 A1 +7.2 B1 +4 B2 +7.2
+        //printf("Left\n");
+
         motorA1PNS(N);
         motorA1();
 
@@ -606,8 +736,30 @@ void directions(){
         motorB2();
 
         break;
-    case turnRight:
-        //printf("turnRight\n");
+     case micro_line_L:
+        //printf("goStraight\n");
+   
+        motorA1PNS(N);
+        motorA1();
+
+        motorA2PNS(P);
+        motorA2();
+
+        motorB1PNS(P);
+        motorB1();
+
+        motorB2PNS(N);
+        motorB2();
+        
+        break;
+        
+    case Right:
+    //右 A1 +7.3 B1 +4.9 B2 +10.7
+//        setSpdA1(targetSpd + 7.3);
+//        setSpdA2(targetSpd);
+//        setSpdB1(targetSpd + 4.9);
+//        setSpdB2(targetSpd + 10.7);
+        //printf("Right\n");
         motorA1PNS(P);
         motorA1();
 
@@ -620,17 +772,34 @@ void directions(){
         motorB2PNS(P);
         motorB2();
         break;
+   case micro_line_R:
+        //printf("goStraight\n");
+        motorA1PNS(P);
+        motorA1();
+
+        motorA2PNS(N);
+        motorA2();
+
+        motorB1PNS(N);
+        motorB1();
+
+        motorB2PNS(P);
+        motorB2();
+        
+        break;
 
     case stp:
+      setSpdA1(0);
+      setSpdA2(0);
+      setSpdB1(0);
+      setSpdB2(0);
+
       motorA1PNS(S);
       motorA2PNS(S);
       motorB1PNS(S);
       motorB2PNS(S);
 
-      setSpdA1(0);
-      setSpdA2(0);
-      setSpdB1(0);
-      setSpdB2(0);
+
     }
   
 }
@@ -641,7 +810,7 @@ void directions(){
 * 功能: 增加一个路径序列项
 * 参数: 任务结构体mission的每一项标记位
 */
-mission* addMission(bool a,bool b,bool c)
+mission* addMission(bool a,bool b,bool c,bool d,bool e)
 {
   mission* currentMission = NULL;
 
@@ -650,10 +819,11 @@ mission* addMission(bool a,bool b,bool c)
   currentMission->A = a;
   currentMission->B = b;
   currentMission->C = c;
-
+  currentMission->D = d;
+  currentMission->E = e;
   currentMission->next = NULL;
-
   return currentMission;
+  
 }
 
 /*
@@ -670,13 +840,13 @@ mission* createMissionList(short num,mission* missArry)
   {
     if (flag)
     {
-      head = addMission(missArry[i].A,missArry[i].B,missArry[i].C);
+      head = addMission(missArry[i].A,missArry[i].B,missArry[i].C,missArry[i].D,missArry[i].E);
       p = head;
       flag = false;
       continue;
     }
 
-    p->next = addMission(missArry[i].A,missArry[i].B,missArry[i].C);
+    p->next = addMission(missArry[i].A,missArry[i].B,missArry[i].C,missArry[i].D,missArry[i].E);
     p = p->next;
   }
 
@@ -714,12 +884,7 @@ void missionsInit(){
 
   //mission* p = NULL;
 
-  for (int i = 0; i < 12; i++)
-  {
-    missionAry[i].A = i;
-    missionAry[i].B = i;
-    missionAry[i].C = i;
-  }
+
 
   //任务序列
 
@@ -756,7 +921,6 @@ void missionsInit(){
   //原料区2
   currentMissions[7].head = createMissionList(12,missionAry);
   currentMissions[7].flag = false;
-
 
 
   //粗加工区1
@@ -801,11 +965,23 @@ void pathPlan()
 
 
   //判断是否经过方格
-  Sensor_F_M = digitalRead(SensorPinF_2);
-  Sensor_B_M = digitalRead(SensorPinB_2);
+    Sensor_F_L = digitalRead(SensorPinF_1);
+    Sensor_F_R = digitalRead(SensorPinF_3);
 
-  Sensor_L_M = digitalRead(SensorPinL_2);
-  Sensor_R_M = digitalRead(SensorPinR_2);
+    Sensor_B_L = digitalRead(SensorPinB_1);
+    Sensor_B_R = digitalRead(SensorPinB_3);
+
+    Sensor_L_L = digitalRead(SensorPinL_1);
+    Sensor_L_R = digitalRead(SensorPinL_3);
+
+    Sensor_R_L = digitalRead(SensorPinR_1);
+    Sensor_R_R = digitalRead(SensorPinR_3);
+
+    Sensor_F_M = digitalRead(SensorPinF_2);
+    Sensor_B_M = digitalRead(SensorPinB_2);
+
+    Sensor_L_M = digitalRead(SensorPinL_2);
+    Sensor_R_M = digitalRead(SensorPinR_2);
 
   
 
@@ -830,13 +1006,15 @@ void pathPlan()
   
   
   
-
+//封装为函数
 
     //前
     if (!(p->A) && !(p->B) && Listflag)
     {
       //更新当前方向
       currentStates = goStraight;
+      micro_line_flag = false;
+      mid_line_flag = false;
       
     }
     //后
@@ -844,29 +1022,110 @@ void pathPlan()
     {
       //更新当前方向
       currentStates = goBack;
+      micro_line_flag = false;
+      mid_line_flag = false;
     }
     //左
     if (p->A && !(p->B) && Listflag)
     {
       //更新当前方向
-      currentStates = turnLeft;
+      currentStates = Left;
+       micro_line_flag = false;
+       mid_line_flag = false;
     }
     //右
     if (p->A && p->B && Listflag)
     {
       //更新当前方向
-      currentStates = turnRight;
+      currentStates = Right;
+       micro_line_flag = false;
+       mid_line_flag = false;
     }
-
+    //停止
     if (p->C && Listflag)
     {
         currentStates = stp;
+         micro_line_flag = false;
+         mid_line_flag = false;
     }
+
+
+
+    //线条模式 前压线
+
+    if (p->D && Listflag && !(p->A) && !(p->B))
+    {
+        micro_flag_F = true;
+        currentStates = micro_line_F;
+    }
+    
+    //线条模式 后压线
+    if (p->D && Listflag && !(p->A) && p->B)
+    {
+        micro_flag_B = true;
+        currentStates = micro_line_B;
+    }
+    //线条模式 左压线
+    if (p->D && Listflag && p->A && !(p->B))
+    {
+        micro_flag_L = true;
+        currentStates = micro_line_L;
+    }
+    //线条模式 右压线
+    if (p->D && Listflag && p->A && p->B)
+    {
+        micro_flag_R = true;
+        currentStates = micro_line_R;
+    }
+
+
+    //中线模式 前
+
+    if (p->E && !(p->A) && !(p->B)){
+      mid_flag_F = true;
+      currentStates = mid_line_F;
+    }
+    //中线模式 后
+    if (p->E && !(p->A) && p->B){
+      mid_flag_B = true;
+      currentStates = mid_line_B;
+    }
+    //中线模式 左
+    if (p->E && p->A && !(p->B)){
+      mid_flag_L = true;
+      currentStates = mid_line_L;
+    }
+    //中线模式 右
+    if (p->E && p->A && p->B){
+      mid_flag_R = true;
+      currentStates = mid_line_R;
+    }
+    
+
+
+
+
+
+
+
+
+
 
    //判断是否经过方格
   switch (currentStates)
   {
+
+
   case goStraight:
+  
+  //上次状态为特殊模式
+    if (micro_line_flag || mid_line_flag){
+        flagA = true;
+        micro_flag_B = micro_flag_F = micro_flag_L = micro_flag_R = false;
+        mid_flag_B = mid_flag_F = mid_flag_R = mid_flag_L = false;
+    }
+
+
     if (Sensor_F_M == 0)
     {
       flagA = true;
@@ -895,6 +1154,14 @@ void pathPlan()
     }
     break;
   case goBack:
+
+  //上次状态为特殊模式
+    if (micro_line_flag || mid_line_flag){
+        flagA = true;
+        micro_flag_B = micro_flag_F = micro_flag_L = micro_flag_R = false;
+        mid_flag_B = mid_flag_F = mid_flag_R = mid_flag_L = false;
+    }
+
     if (Sensor_B_M == 0)
     {
       flagA = true;
@@ -922,7 +1189,14 @@ void pathPlan()
     }
     break;
 
-  case turnLeft:
+  case Left:
+
+  //上次状态为特殊模式
+    if (micro_line_flag || mid_line_flag){
+        flagA = true;
+        micro_flag_B = micro_flag_F = micro_flag_L = micro_flag_R = false;
+        mid_flag_B = mid_flag_F = mid_flag_R = mid_flag_L = false;
+    }
     if (Sensor_L_M == 0)
     {
       flagA = true;
@@ -931,7 +1205,6 @@ void pathPlan()
     {
         flagB = true;
     }
-
     if (Sensor_R_M == 1 && flagB)
     {
         T2 = getTickTime();
@@ -950,7 +1223,14 @@ void pathPlan()
     break;
     
     
-  case turnRight:
+  case Right:
+
+  //上次状态为特殊模式
+    if (micro_line_flag || mid_line_flag){
+        flagA = true;
+        micro_flag_B = micro_flag_F = micro_flag_L = micro_flag_R = false;
+        mid_flag_B = mid_flag_F = mid_flag_R = mid_flag_L = false;
+    }
     if (Sensor_R_M == 0)
     {
       flagA = true;
@@ -985,6 +1265,70 @@ void pathPlan()
     flagD = false;
     break;
 
+
+
+
+  //压线模式
+  case micro_line_F:
+  //碰线,状态切换
+    if (!Sensor_F_M){
+      flagA = flagD = true;
+      
+    }
+    break;
+  case micro_line_B:
+  //碰线,路径切换
+    if (!Sensor_B_M){
+      flagA = flagD = true;
+    }
+    break;
+    
+  case micro_line_L:
+  //碰线,切换下一个状态
+    if (!Sensor_L_L){
+      flagA = flagD = true;
+      
+      
+    }
+     break;
+  case micro_line_R:
+  //碰线,切换下一个状态
+    if (!Sensor_R_M){
+      flagA = flagD = true;
+      
+    }
+    break;
+
+
+    //中线模式
+  case mid_line_F:
+  //碰线,路径切换
+    if (!Sensor_L_M && !Sensor_R_M){
+      flagA = flagD = true;
+      
+    }
+    break;
+  case mid_line_B:
+  //碰线,路径切换
+    if (!Sensor_L_M && !Sensor_R_M){
+      flagA = flagD = true;
+    }
+    break;
+    
+  case mid_line_L:
+  //碰线,切换下一个状态
+    if (!Sensor_F_M && !Sensor_B_M){
+      flagA = flagD = true;
+      
+    }
+     break;
+  case mid_line_R:
+  //碰线,切换下一个状态
+    if (!Sensor_B_M && !Sensor_F_M){
+      flagA = flagD = true;
+    }
+    break;
+    
   default:
     break;
   }
@@ -996,49 +1340,72 @@ void pathPlan()
 */
 
 void test(){
-  mission demo[9];
-    //S
-  demo[0].A = false;
+  mission demo[7];
+  //L
+  demo[0].A = true;
   demo[0].B = false;
   demo[0].C = false;
-    //S
-  demo[1].A = false;
+  demo[0].D = false;
+  demo[0].E = false;
+  //L
+  demo[1].A = true;
   demo[1].B = false;
   demo[1].C = false;
-    //L
+  demo[1].D = false;
+  demo[1].E = false;
+  //L
   demo[2].A = true;
   demo[2].B = false;
   demo[2].C = false;
-  //L
+  demo[2].D = false;
+  demo[2].E = false;
+  //B
   demo[3].A = true;
   demo[3].B = false;
   demo[3].C = false;
+  demo[3].D = false;
+  demo[3].E = false;
 
-    //Right
-  demo[4].A = true;
+
+  //L
+  demo[4].A = false;
   demo[4].B = true;
   demo[4].C = false;
-      //Right
-  demo[5].A = true;
-  demo[5].B = true;
+  demo[4].D = false;
+  demo[4].E = false;
+
+  
+////后
+//  demo[5].A = false;
+//  demo[5].B = true;
+//  demo[5].C = false;
+//  demo[5].D = true;
+//  demo[5].E = false;
+
+//左
+  demo[5].A = false;
+  demo[5].B = false;
   demo[5].C = false;
+  demo[5].D = true;
+  demo[5].E = false;
+//
+////右
+//  demo[5].A = false;
+//  demo[5].B = false;
+//  demo[5].C = false;
+//  demo[5].D = true;
+//  demo[5].E = false;
 
-      //Back
   demo[6].A = false;
-  demo[6].B = true;
-  demo[6].C = false;
-      //Back
-  demo[7].A = false;
-  demo[7].B = true;
-  demo[7].C = false;
-
-    //stp
-  demo[8].A = false;
-  demo[8].B = false;
-  demo[8].C = true;
+  demo[6].B = false;
+  demo[6].C = true;
+  demo[6].D = false;
+  demo[6].E = false;
 
 
-  testMission =  createMissionList(9,demo);
+  
+
+  testMission =  createMissionList(7,demo);
 
   
 }
@@ -1053,6 +1420,11 @@ void test(){
 
 void stateFix()
 {
+  if (currentStates >4 && currentStates<9){
+    return;
+  }
+
+//  MsTimer2::stop();
 
     
     Sensor_F_L = digitalRead(SensorPinF_1);
@@ -1082,10 +1454,11 @@ void stateFix()
     switch (currentStates)
     {
 
-    case goStraight:
+    case goStraight: 
         //偏右
         if (!Sensor_F_L && Sensor_F_R && ctrlFlag)
         {
+//          Serial.println("===偏右===");
 
             SensorFlagL = true;//先触碰一侧
             ctrlFlag = false;//计时控制因子
@@ -1096,6 +1469,7 @@ void stateFix()
         //偏左
         if (!Sensor_F_R && Sensor_F_L && ctrlFlag) 
         {
+//          Serial.println("===偏左===");
             SensorFlagR = true;//标记先触碰一侧
             ctrlFlag = false;//计时控制因子
             Fix_T1 = getTickTime();
@@ -1106,6 +1480,7 @@ void stateFix()
         //偏左未修正状态
         if (SensorFlagR)
         {
+//          Serial.println("===偏左修正中===");
 
             Fix_T2 = FixFctr_GB*(getTickTime() - Fix_T1);
             //减速修正
@@ -1123,6 +1498,7 @@ void stateFix()
         //偏左已修正
         if (SensorFlagR && Sensor_F_L && Sensor_F_R)
         {
+//          Serial.println("偏已左修正");
             // FixCtrlFlag = false;
             // SensorFlagL = false;
             Fix_T1 = Fix_T2 = 0;
@@ -1143,6 +1519,7 @@ void stateFix()
         //偏右未纠正
         if (SensorFlagL)
         {   //注意类型 
+//          Serial.println("===偏右修正中===");
             Fix_T2 = FixFctr_GB*(getTickTime() - Fix_T1);
             //减速修正
             setSpdA1(targetSpd - Fix_T2);
@@ -1157,6 +1534,7 @@ void stateFix()
         //偏右已纠正
         if (SensorFlagL && Sensor_F_R && Sensor_F_L)
         {
+//          Serial.println("===偏右已修正===");
 
             SensorFlagL = false;
             ctrlFlag = true;
@@ -1178,6 +1556,7 @@ void stateFix()
         // Serial.print("  右传感器:    ");
         // Serial.println(Sensor_B_R);
         //偏右
+        
         if (!Sensor_B_L && Sensor_B_R && ctrlFlag)
         {
 
@@ -1263,11 +1642,13 @@ void stateFix()
         }
         break;
 
-    case turnLeft:
+    case Left:
 
         //偏右
         if (!Sensor_L_L && Sensor_L_R && ctrlFlag)
         {
+//          Serial.println("===偏右===");
+          
 
             SensorFlagL = true;//标记偏向
             ctrlFlag = false;//计时控制因子
@@ -1278,6 +1659,7 @@ void stateFix()
         //偏左
         if (!Sensor_L_R && Sensor_L_L && ctrlFlag) 
         {
+//          Serial.println("===偏左===");
             SensorFlagR = true;//标记偏向哪一侧
             ctrlFlag = false;//计时控制因子
             Fix_T1 = getTickTime();
@@ -1289,6 +1671,7 @@ void stateFix()
 
         if (SensorFlagR)
         {
+//          Serial.println("===偏左修正中===");
             Fix_T2 = FixFctr_LR*(getTickTime() - Fix_T1);
             //减速修正
             setSpdA1(targetSpd - Fix_T2);
@@ -1303,6 +1686,7 @@ void stateFix()
         //偏左已修正
         if (SensorFlagR && Sensor_L_L && Sensor_L_R && Sensor_L_M)
         {
+//          Serial.println("===偏左已修正===");
             SensorFlagR = false;
             ctrlFlag = true;
             // Fix_T1 = Fix_T2 = 0;
@@ -1322,6 +1706,7 @@ void stateFix()
         //偏右未纠正
         if (SensorFlagL)
         {   //注意类型 
+//          Serial.println("===偏右修正中===");
             Fix_T2 = FixFctr_LR*(getTickTime() - Fix_T1);
             //减速修正
             setSpdA2(targetSpd + Fix_T2);
@@ -1332,27 +1717,31 @@ void stateFix()
             // Serial.println("偏右修正中");
 
         }
+
+
         //偏右已纠正
         if (SensorFlagL && Sensor_L_R && Sensor_L_L && Sensor_L_M)
         {
+//          Serial.println("===偏右已修正===");
             SensorFlagL = false;
             ctrlFlag = true;
             // Fix_T1 = Fix_T2 = 0;
 
             //减速恢复
-            setSpdA2(targetSpd);
-            setSpdB1(targetSpd);
+            setSpdA2(targetSpd + 7.2);
+            setSpdB1(targetSpd + 4);
             //加速恢复
-            setSpdA1(targetSpd);
+            setSpdA1(targetSpd + 7.3);
             setSpdB2(targetSpd);
 
         }
         break;
 
-    case turnRight:
+    case Right:
         //偏右
         if (!Sensor_R_L && Sensor_R_R && ctrlFlag)
         {
+//          Serial.println("===偏右===");
 
             SensorFlagL = true;//标记偏向
             ctrlFlag = false;//计时控制因子
@@ -1362,6 +1751,7 @@ void stateFix()
         //偏左
         if (!Sensor_R_R && Sensor_R_L && ctrlFlag) 
         {
+//          Serial.println("===偏左===");
             SensorFlagR = true;//标记偏向哪一侧
             ctrlFlag = false;//计时控制因子
             Fix_T1 = getTickTime();
@@ -1372,6 +1762,7 @@ void stateFix()
 
         if (SensorFlagR)
         {
+//          Serial.println("===偏左修正中===");
             Fix_T2 = FixFctr_LR*(getTickTime() - Fix_T1);
             //减速修正
             setSpdA1(targetSpd + Fix_T2);
@@ -1385,6 +1776,7 @@ void stateFix()
         //偏左已修正
         if (SensorFlagR && Sensor_R_L && Sensor_R_R && Sensor_R_M)
         {
+//          Serial.println("===偏左已修正===");
             SensorFlagR = false;
             ctrlFlag = true;
             Fix_T1 = Fix_T2 = 0;
@@ -1403,18 +1795,20 @@ void stateFix()
         //偏右未纠正
         if (SensorFlagL)
         {   //注意类型 
+//          Serial.println("===偏右修正中==");
             Fix_T2 = FixFctr_LR*(getTickTime() - Fix_T1);
             //减速修正
-            setSpdA2(targetSpd - Fix_T2);
-            setSpdB1(targetSpd + Fix_T2);
+            setSpdA2(spdA2 - Fix_T2);
+            setSpdB1(spdB1 + Fix_T2);
             //加速修正
-            setSpdA1(targetSpd - Fix_T2);
-            setSpdB2(targetSpd + Fix_T2);
+            setSpdA1(spdA1 - Fix_T2);
+            setSpdB2(spdB2 + Fix_T2);
 
         }
         //偏右已纠正
         if (SensorFlagL && Sensor_R_R && Sensor_R_L && Sensor_R_M)
         {
+//          Serial.println("===偏右已修正===");
             SensorFlagL = false;
             ctrlFlag = true;
             Fix_T1 = Fix_T2 = 0;
@@ -1427,10 +1821,63 @@ void stateFix()
             setSpdB2(targetSpd + 10.7);
         }
         break;
+    //微调前模式
+    case micro_line_F:
+        setSpdA1(targetSpd-20);
+        setSpdA2(targetSpd-20);
+        setSpdB1(targetSpd-20);
+        setSpdB2(targetSpd-20);
+        break;
+        
+    //微调左模式
+    case micro_line_L:
+        //车身左前偏移(当前朝向右偏)
+        if (Sensor_F_L){
+          SensorFlagL = true;
+        }
+        //车身右前偏移(当前朝向左偏)
+        if (Sensor_F_R){
+          SensorFlagR = true;
+        }
+        //车身正
+        if (!Sensor_F_R && !Sensor_F_M && !Sensor_F_L){
+          SensorFlagR = false;
+          SensorFlagL = false;
+          setSpdA2(targetSpd-20);
+          setSpdB1(targetSpd-20);
+          //加速恢复
+          setSpdA1(targetSpd-20);
+          setSpdB2(targetSpd-20);
+        }
+        //右偏未校正
+        if (SensorFlagL){
+            Fix_T2 = FixFctr_LR*(getTickTime() - Fix_T1);
+            //减速修正
+            setSpdA2(targetSpd + Fix_T2);
+            setSpdB1(targetSpd - Fix_T2);
+            //加速修正
+            setSpdA1(targetSpd + Fix_T2);
+            setSpdB2(targetSpd - Fix_T2);
+        }
+        //左偏未校正
+        if (SensorFlagR){
+            Fix_T2 = FixFctr_LR*(getTickTime() - Fix_T1);
+            //减速修正
+            setSpdA1(targetSpd - Fix_T2);
+            setSpdB2(targetSpd + Fix_T2);
+            //加速修正
+            setSpdA2(targetSpd - Fix_T2);
+            setSpdB1(targetSpd + Fix_T2);
+        }
+        break;
+
     
     default:
         break;
     }
+
+
+//    MsTimer2::start();
 
 
 
@@ -1652,7 +2099,26 @@ void isr3()
 
 }
 
-
+void acc(){
+  if (micro_line_flag){
+    targetSpd = 50;
+  }
+  else{
+    targetSpd = 100;
+  }
+  if(!(p->C) && spdA1 <= targetSpd){
+    spdA1 += 1;
+    spdA2 += 1;
+    spdB1 += 1;
+    spdB2 += 1;
+  }
+  if (p->C){
+    spdA1 -= 1;
+    spdA2 -= 1;
+    spdB1 -= 1;
+    spdB2 -= 1;
+  }
+}
 
 void count(){
 
@@ -1662,20 +2128,35 @@ void count(){
     detachInterrupt(4);
     detachInterrupt(5);
 
- //    setSpdA1(spdController(spdA1Count,1) + 50);
-    // Serial.println(spdA1Count);
+    
+
+    setSpdA1(spdController_A1(spdA1Count,1));
+//    Serial.println(spdA1Count);
 //    Serial.print(",");
 //    Serial.println(spdA1);
 
 
-    // Serial.print("A1:   ");
-    // Serial.print(spdA1Count);
-    // Serial.print("A2:   ");
-    // Serial.print(spdA2Count);
-    // Serial.print("B1:   ");
-    // Serial.print(spdB1Count);
-    // Serial.print("B2:   ");
-    // Serial.print(spdB2Count);
+    setSpdA2(spdController_A2(spdA2Count,2));
+//
+//    Serial.println(spdA2Count);
+//    Serial.print(",");
+//    Serial.println(spdA2);
+    
+    setSpdB1(spdController_B1(spdB1Count,2));
+
+//    Serial.println(spdB1Count);
+//    Serial.print(",");
+//    Serial.println(spdB1);
+
+    setSpdB2(spdController_B2(spdB2Count,2));
+
+//    Serial.println(spdB2Count);
+//    Serial.print(",");
+//    Serial.println(spdB2);
+
+
+
+
 
     spdA1Count = spdA2Count = spdB1Count = spdB2Count = 0;
 
@@ -1691,4 +2172,83 @@ void count(){
 
 long int getTickTime(){
     return millis();
+}
+
+
+
+/*
+参    数 ： setPoint:设置值 
+            ActualValue:反馈值 
+            Mode: 1 2 3 4 四个轮子
+返 回 值 ： PIDInc:本次PID增量(+/-)
+*/
+
+float spdController_A1(float ActualValue, short Mode)
+{
+
+      float PIDInc;  //增量
+  
+  
+        Ek_A1 = setPoint_A1 - ActualValue;
+        
+        PIDInc = (KP_A1 * Ek_A1) - (KI_A1 * Ek1_A1) + (KD_A1 * Ek2_A1);
+
+        Ek2_A1 = Ek1_A1;
+        Ek1_A1 = Ek_A1;  
+
+                            
+  
+  return PIDInc;
+}
+
+float spdController_A2(float ActualValue, short Mode)
+{
+
+      float PIDInc;  //增量
+  
+  
+        Ek_A2 = setPoint_A2 - ActualValue;
+        
+        PIDInc = (KP_A2 * Ek_A2) - (KI_A2 * Ek1_A2) + (KD_A2 * Ek2_A2);
+
+        Ek2_A2 = Ek1_A2;
+        Ek1_A2 = Ek_A2;  
+
+                            
+  
+  return PIDInc;
+}
+float spdController_B1(float ActualValue, short Mode)
+{
+
+      float PIDInc;  //增量
+  
+  
+        Ek_B1 = setPoint_B1 - ActualValue;
+        
+        PIDInc = (KP_B1 * Ek_B1) - (KI_B1 * Ek1_B1) + (KD_B1 * Ek2_B1);
+
+        Ek2_B1 = Ek1_B1;
+        Ek1_B1 = Ek_B1;  
+
+                            
+  
+  return PIDInc;
+}
+float spdController_B2(float ActualValue, short Mode)
+{
+
+      float PIDInc;  //增量
+  
+  
+        Ek_B2 = setPoint_B2 - ActualValue;
+        
+        PIDInc = (KP_B2 * Ek_B2) - (KI_B2 * Ek1_B2) + (KD_B2 * Ek2_B2);
+
+        Ek2_B2 = Ek1_B2;
+        Ek1_B2 = Ek_B2;  
+
+                            
+  
+  return PIDInc;
 }
