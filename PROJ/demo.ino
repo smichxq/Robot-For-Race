@@ -1,3 +1,68 @@
+/*
+* 路径 1743
+*/
+
+
+
+short Left_FixA1 = 23;
+short Left_FixA2 = 0;
+short Left_FixB1 = 13;
+short Left_FixB2 = 30;
+
+
+
+
+short Right_FixA1 = 16;
+short Right_FixA2 = 0;
+short Right_FixB1 = 16.5;
+short Right_FixB2 = 27.5;
+
+
+short Go_FixA1 = 0;
+short Go_FixA2 = 4;
+short Go_FixB1 = 0;
+short Go_FixB2 = 4;
+
+
+
+short Back_FixA1 = 0;
+short Back_FixA2 = 4.2;
+short Back_FixB1 = 0;
+short Back_FixB2 = 4.2;
+
+
+// short Left_FixA1 = 0;
+// short Left_FixA2 = 0;
+// short Left_FixB1 = 0;
+// short Left_FixB2 = 0;
+
+
+
+
+// short Right_FixA1 = 0;
+// short Right_FixA2 = 0;
+// short Right_FixB1 = 0;
+// short Right_FixB2 = 0;
+
+
+// short Go_FixA1 = 0;
+// short Go_FixA2 = 0;
+// short Go_FixB1 = 0;
+// short Go_FixB2 = 0;
+
+
+
+// short Back_FixA1 = 0;
+// short Back_FixA2 = 0;
+// short Back_FixB1 = 0;
+// short Back_FixB2 = 0;
+
+
+
+
+
+
+
 // #include <LobotServoController.h>
 #include <MsTimer2.h>
 //方向
@@ -27,13 +92,13 @@
 #define mid_line_R 12
 
 //越线阈值 不超150 前后
-#define tickThreshold 10
+#define tickThreshold 5
 
 //速度
 int targetSpd = 100;
 
 //取样周期
-#define smpT 100
+#define smpT 0.2
 
 //当前方向
 short currentStates;
@@ -134,6 +199,10 @@ typedef struct mission
   bool C;
   bool D;
   bool E;
+  bool M;
+  bool M_1;
+  bool M_2;
+  bool M_3;
   struct mission* next;
 }mission;
 
@@ -143,7 +212,7 @@ typedef struct missions
   //每一个任务具体任务指针,无头节点
   mission* head;
   //任务序列指针域
-  //struct missions* next;
+  struct missions* next;
 
   //多路径区分 默认为true
   bool flag;
@@ -165,7 +234,7 @@ byte UART_TARGET[6];//任务码
 byte UART_DELTA[2];//当前误差
 /*===================================================UART===================================================*/
 
-
+byte BTData[50];
 
 
 
@@ -173,13 +242,22 @@ byte UART_DELTA[2];//当前误差
 
 missions currentMissions[14];
 
+//任务序列指针
+missions* mps  = NULL;
+
+//任务序列索引
+short index_mission = 0;
+
+//任务指针
+mission* mp = NULL;
+
 /*=====================声明一个全局的任务序列missions[N]=================*/
 
 /*=====================测试路径==================*/
 
-mission* testMission;
-mission* p  = NULL;//p指针在其实例化后无法动态绑定
-bool onceFlag = true;
+// mission* testMission;
+// mission* p  = NULL;//p指针在其实例化后无法动态绑定
+// bool onceFlag = true;
 
 /*=====================测试路径==================*/
 
@@ -218,8 +296,8 @@ short Sensor_L_M = 1;
 //偏移修正因子
 //前后 0.150
 //左右 0.1
-float FixFctr_GB = 0.920;
-float FixFctr_LR = 0.92;
+float FixFctr_GB = 0.40;
+float FixFctr_LR = 0.190;
 //偏移修正控制因子
 bool ctrlFlag = true;
 bool SensorFlagL = false;
@@ -270,24 +348,54 @@ bool mid_flag_B = false;
 bool mid_flag_L = false;
 bool mid_flag_R = false;
 
+bool ctrl_flag = true;
+
+
 
 // LobotServoController myse(Serial3);//舵机控制
 
 void setup() {
-  //测试路径初始化
-  test();
-  p = testMission;
-  sensorInit();
+    delay(200);
+    
+    sensorInit();
+    mps = missionsInit();
+    mp = mps->head;
+    Serial.begin(115200);
+    //openmv通信
+    Serial1.begin(19200);
+    //机械臂通信
+    Serial3.begin(9600);
+
+    while(mps){
+        while(mp){
+            Serial.println(mp->A,BIN);
+            Serial.println(mp->B,BIN);
+            Serial.println(mp->C,BIN);
+            Serial.println(mp->D,BIN);
+            Serial.println(mp->E,BIN);
+            Serial.println(mp->M,BIN);
+            Serial.println(mp->M_1,BIN);
+            Serial.println(mp->M_2,BIN);
+            Serial.println(mp->M_3,BIN);
+            Serial.println("===========================");
+            mp = mp->next;
+            delay(1111);
+        }
+        Serial.println("<><><><><><><><><><><><><><><><><<><<><<>");
+        mps = mps->next;
+    }
+
 //  IntServiceInit();
   //前后 A2 +3 B2 +3
   //左 A1 +7.2 B1 +4 B2 +7.2
   //右 A1 +7.3 B1 +4.9 B2 +10.7
-  motorInit();
-  setSpdA1(targetSpd);
-  setSpdA2(targetSpd + 3);
-  setSpdB1(targetSpd);
-  setSpdB2(targetSpd + 3);
-//  Serial.begin(9600);
+//   motorInit();
+//   setSpdA1(targetSpd);
+//   setSpdA2(targetSpd);
+//   setSpdB1(targetSpd);
+//   setSpdB2(targetSpd);
+
+//  BTCtrl();
 //  Serial.println("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
   delay(500);
 
@@ -299,34 +407,161 @@ void loop()
   先使用路径规划pathPlan
   再命令电机移动directions
   */
-//  if (p){
-//    Serial.print(p->A);
-//    Serial.print(p->B);
-//    Serial.print(p->C);
-//    Serial.println(p->D);
-//    Serial.println("=======================");
-//    p = p->next;
-//  }
+    // BTCtrl();
+    // delay(1000);
+//   pathPlan();
+//   Serial.println(currentStates);
   
-  
-  pathPlan();
-  directions();
-  stateFix();
-//  delay(500);
-//   Sensor_F_M = digitalRead(SensorPinF_2);
-//   if (p->C && Sensor_F_M){
-//       spdA1 = spdA2 = spdB1 = spdB2 = 65;
-//       while(Sensor_F_M){
-//           currentStates = goStraight;
-//           directions();
-//          
-//       }
-//       spdA1 = spdA2 = spdB1 = spdB2 = 0;
-//       currentStates = stp;
+//   if (!ctrl_flag){
+
+//   pathPlan();
+    // currentStates = goBack;
+    //   Serial.println(currentStates);
+//   directions();
+    // stateFix();
+
 //   }
+
+
+
   
 
 }
+//蓝牙控制
+void BTCtrl(){
+    Serial.println("standby!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    int i = 0;
+    if (Serial.available()<0){
+        return;
+    }
+        while (Serial.available()>0)
+        {
+            BTData[i] = Serial.read();
+            i++;
+        }
+        
+        for(int j = 0 ; j < i+1 ; j++){
+            //ol(online)
+            // Serial.println("解析!!!!!!!!!!!!!");
+            if (BTData[j]==111 && BTData[j+1] ==108){
+                Serial.println("online!!!!!!!!!!!!!!!!!");
+                setSpdA1(0);
+                setSpdA2(0);
+                setSpdB1(0);
+                setSpdB2(0);
+                //随时接收指令
+                ctrl_flag = true;
+                while (true)
+                {
+                    delay(200);
+                    Serial.println("ol Stand BY~~~~~~~~~~~~~~~~~");
+                    i = 0;
+                    while (Serial.available()>0)
+                        {
+                            BTData[i] = Serial.read();
+                            i++;
+                        }
+                        delay(100);
+                        // i=0;
+                        if (i > 0){
+                            for (j = 0;j<i+1;j++){
+                                //00\n 前
+                                if (BTData[j] == 48 && BTData[j+1] == 48){
+                                    // Serial.println("go!!!!!!!!!!!!!!!!!!!!!!!!");
+                                    setSpdA1(50);
+                                    setSpdA2(50);
+                                    setSpdB1(50);
+                                    setSpdB2(50);
+                                    currentStates = goStraight;
+                                    directions();
+ 
+                                    Serial.flush();
+                                    break;
+                                    
+                                }//01\n 后
+                                if (BTData[j] == 48 && BTData[j+1] == 49){
+                                    setSpdA1(50);
+                                    setSpdA2(50);
+                                    setSpdB1(50);
+                                    setSpdB2(50);
+                                    currentStates = goBack;
+                                    directions();
+
+                                    Serial.flush();
+                                    break;
+                                    
+                                }
+                                //10\n 左
+                                if (BTData[j] == 49 && BTData[j+1] == 48){
+                                    setSpdA1(100);
+                                    setSpdA2(100);
+                                    setSpdB1(100);
+                                    setSpdB2(100);
+                                    currentStates = Left;
+                                    directions();
+
+                                    Serial.flush();
+                                    break;
+                                    
+                                }
+                                //11\n 右
+                                if (BTData[j] == 49 && BTData[j+1] == 49){
+                                    setSpdA1(100);
+                                    setSpdA2(100);
+                                    setSpdB1(100);
+                                    setSpdB2(100);
+                                    currentStates = Right;
+                                    directions();
+                                    Serial.flush();
+                                    break;
+                                }
+                                //21\n 停
+                                if (BTData[j] == 50 && BTData[j+1] == 49){
+                                    currentStates = stp;
+                                    directions();
+                                    delay(100);
+                                    Serial.flush();
+                                    break;
+                                }
+
+                            }
+                        }
+
+
+                }
+                
+            }
+
+            //ot(outline)
+            if (BTData[j]==111 && BTData[j+1]==116)
+            {
+                Serial.println("outline!!!!!!!!!!!!!!!!!");
+                ctrl_flag =false;
+                return;
+                
+            }
+            
+        }
+
+    
+    
+
+    
+}
+
+
+
+//LED指示灯,参数为次数
+void blbl(int j) {
+    for (int i= 0; i<j ; i++){
+
+        digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
+        delay(200);                       // wait for a second
+        digitalWrite(LED_BUILTIN, LOW);    // turn the LED off by making the voltage LOW
+        delay(200);        
+    }               // wait for a second
+}
+
 
 
 /*
@@ -556,13 +791,43 @@ void setSpdB2(short spd){
 */
 
 void motorA1(){
-  if (spdA1<0)
+  if (spdA1<=0)
   {
     analogWrite(MotorPin1,0);
   }
   else if(spdA1<255)
   {
-    analogWrite(MotorPin1,spdA1);
+      if (ctrlFlag){
+
+        //左移A1
+        if (currentStates == Left && ctrlFlag){
+            analogWrite(MotorPin1,spdA1 + Left_FixA1);
+            // Serial.println(spdA1 + Left_FixA1);
+
+        }
+        //右移A1
+        if (currentStates == Right && ctrlFlag){
+            analogWrite(MotorPin1,spdA1 + Right_FixA1);
+
+        }
+
+        if(currentStates == goStraight && ctrlFlag){
+            analogWrite(MotorPin1,spdA1 + Go_FixA1);
+        }
+
+        if ((currentStates == goBack || currentStates == micro_line_B) && ctrlFlag){
+            analogWrite(MotorPin1,spdA1 + Back_FixA1);
+        }
+
+        if (currentStates == stp && ctrlFlag){
+            analogWrite(MotorPin1,spdA1);
+        }
+      }
+      else{
+        analogWrite(MotorPin1,spdA1);
+      }
+
+    
   }
   else
   {
@@ -577,7 +842,38 @@ void motorA2(){
   }
   else if(spdA2<255)
   {
-    analogWrite(MotorPin2,spdA2);
+      if (ctrlFlag){
+
+        //左移A2
+        if (currentStates == Left && ctrlFlag){
+            analogWrite(MotorPin2,spdA2 + Left_FixA2);
+            // Serial.println(spdA2 + Left_FixA2);
+
+        }
+        //右移A2
+        if (currentStates == Right && ctrlFlag){
+            analogWrite(MotorPin2,spdA2 + Right_FixA2);
+        }
+
+        if (currentStates == goStraight && ctrlFlag){
+            analogWrite(MotorPin2,spdA2 + Go_FixA2);
+        }
+
+        if ((currentStates == goBack|| currentStates == micro_line_B)  && ctrlFlag){
+            analogWrite(MotorPin2,spdA2 + Back_FixA2);
+        }
+
+        if (currentStates == stp && ctrlFlag){
+            analogWrite(MotorPin2,spdA2);
+        }
+
+      }
+
+      else{
+          analogWrite(MotorPin2,spdA2);
+      }
+
+    
   }
   else
   {
@@ -592,7 +888,34 @@ void motorB1(){
   }
   else if(spdB1<255)
   {
-    analogWrite(MotorPin3,spdB1);
+      if (ctrlFlag){
+        //左移B1
+        if (currentStates == Left && ctrlFlag){
+            analogWrite(MotorPin3,spdB1 + Left_FixB1);
+            // Serial.println(spdB1 + Left_FixB1);
+
+        }
+
+        //右移B1
+        if (currentStates == Right && ctrlFlag){
+            analogWrite(MotorPin3,spdB1 + Right_FixB1);
+        }
+        if (currentStates == goStraight && ctrlFlag){
+            analogWrite(MotorPin3,spdB1 + Go_FixB1);
+        }
+
+        if ((currentStates == goBack || currentStates == micro_line_B)  && ctrlFlag){
+            analogWrite(MotorPin3,spdB1 + Back_FixB1);
+        }
+
+        if (currentStates == stp && ctrlFlag){
+            analogWrite(MotorPin3,spdB1);
+        }
+      }
+      else{
+          analogWrite(MotorPin3,spdB1);
+      }
+    
   }
   else
   {
@@ -607,7 +930,36 @@ void motorB2(){
   }
   else if(spdB2<255)
   {
-    analogWrite(MotorPin4,spdB2);
+      if (ctrlFlag){
+        //左移B2
+        if (currentStates == Left && ctrlFlag){
+            analogWrite(MotorPin4,spdB2 + Left_FixB2);
+            // Serial.println(spdB2 + Left_FixB2);
+
+        }
+
+        //右移B2
+        if (currentStates == Right && ctrlFlag){
+            analogWrite(MotorPin4,spdB2 + Right_FixB2);
+        }
+        //前进
+        if (currentStates == goStraight && ctrlFlag){
+            analogWrite(MotorPin4,spdB2 + Go_FixB2);
+        }
+
+        if ((currentStates == goBack || currentStates == micro_line_B)  && ctrlFlag){
+            analogWrite(MotorPin4,spdB2 + Back_FixB2);
+        }
+
+        if (currentStates == stp && ctrlFlag){
+            analogWrite(MotorPin4,spdB2);
+        }
+
+      }
+      else{
+          analogWrite(MotorPin4,spdB2);
+      }
+    
   }
   else
   {
@@ -630,23 +982,7 @@ void motorB2(){
 void directions(){
     
     short dirct = currentStates;
-    //电机换向保护
-//    if (dirct != lastStates){
-//        setSpdA1(0);
-//        setSpdA2(0);
-//        setSpdB1(0);
-//        setSpdB2(0);
-//        motorA1PNS(S);
-//        motorA2PNS(S);
-//        motorB1PNS(S);
-//        motorB2PNS(S);
-//        delay(200);
-//        setSpdA1(spdA1);
-//        setSpdA2(spdA2);
-//        setSpdB1(spdB1);
-//        setSpdB2(spdB2);
-//    }
-//    lastStates = dirct;
+
 
 
   
@@ -659,80 +995,140 @@ void directions(){
 
         //printf("goStraight\n");
         motorA1PNS(P);
+        motorA2PNS(P);
+        motorB1PNS(P);
+        motorB2PNS(P);
         motorA1();
 
-        motorA2PNS(P);
+        
         motorA2();
 
-        motorB1PNS(P);
+        
         motorB1();
 
-        motorB2PNS(P);
+        
         motorB2();
+
         
         break;
       case micro_line_F:
         //printf("goStraight\n");
+        while (true){
+            Sensor_F_M = digitalRead(SensorPinF_2);
+            setSpdA1(40);
+            setSpdA2(40);
+            setSpdB1(40);
+            setSpdB2(40);
 
-        motorA1PNS(P);
-        motorA1();
+            motorA1PNS(P);
+            motorB1PNS(P);
+            motorA2PNS(P);
+            motorB2PNS(P);
 
-        motorA2PNS(P);
-        motorA2();
+            motorA1();
+            motorA2();
+            motorB1();
+            motorB2();
+            //压线
+            if (!Sensor_F_M){
+                motorA1PNS(S);
+                motorA2PNS(S);
+                motorB1PNS(S);
+                motorB2PNS(S);
 
-        motorB1PNS(P);
-        motorB1();
+                break;
+            }
 
-        motorB2PNS(P);
-        motorB2();
+        }
         
         break;
 
     case goBack:
 
         motorA1PNS(N);
+        motorA2PNS(N);
+        motorB1PNS(N);
+        motorB2PNS(N);
         motorA1();
 
-        motorA2PNS(N);
+        
         motorA2();
 
-        motorB1PNS(N);
+        
         motorB1();
 
-        motorB2PNS(N);
+        
         motorB2();
         break;
 
     case micro_line_B:
         //printf("goStraight\n");
-        motorA1PNS(N);
-        motorA1();
+        while (true){
+            // Serial.println("!!!!!!!!!!!!!!!1");
+            Sensor_B_M = digitalRead(SensorPinB_2);
+            setSpdA1(45);
+            setSpdA2(45);
+            setSpdB1(45);
+            setSpdB2(45);
 
-        motorA2PNS(N);
-        motorA2();
+            motorA1PNS(N);
+            motorA2PNS(N);
+            motorB1PNS(N);
+            motorB2PNS(N);
+            motorA1();
 
-        motorB1PNS(N);
-        motorB1();
+            
+            motorA2();
 
-        motorB2PNS(N);
-        motorB2();
+            
+            motorB1();
+
+            
+            motorB2();
+            //压线
+            if (!Sensor_B_M){
+                motorA1PNS(P);
+                motorA2PNS(P);
+                motorB1PNS(P);
+                motorB2PNS(P);
+                motorA1();
+
+                
+                motorA2();
+
+                
+                motorB1();
+
+                
+                motorB2();
+
+                delay(20);
+                motorA1PNS(S);
+                motorA2PNS(S);
+                motorB1PNS(S);
+                motorB2PNS(S);
+                break;
+            }
+
+        }
         
         break;
     case Left:
 
-    //左 A1 +7.2 B1 +4 B2 +7.2
-        //printf("Left\n");
 
         motorA1PNS(N);
+        motorA2PNS(P);
+        motorB1PNS(P);
+        motorB2PNS(N);
         motorA1();
 
-        motorA2PNS(P);
+        
         motorA2();
 
-        motorB1PNS(P);
+        
         motorB1();
 
-        motorB2PNS(N);
+        
         motorB2();
 
         break;
@@ -740,15 +1136,18 @@ void directions(){
         //printf("goStraight\n");
    
         motorA1PNS(N);
+        motorA2PNS(P);
+        motorB1PNS(P);
+        motorB2PNS(N);
         motorA1();
 
-        motorA2PNS(P);
+        
         motorA2();
 
-        motorB1PNS(P);
+        
         motorB1();
 
-        motorB2PNS(N);
+        
         motorB2();
         
         break;
@@ -761,38 +1160,44 @@ void directions(){
 //        setSpdB2(targetSpd + 10.7);
         //printf("Right\n");
         motorA1PNS(P);
+        motorB1PNS(N);
+        motorA2PNS(N);
+        motorB2PNS(P);
         motorA1();
 
-        motorA2PNS(N);
+        
         motorA2();
 
-        motorB1PNS(N);
+        
         motorB1();
 
-        motorB2PNS(P);
+        
         motorB2();
         break;
    case micro_line_R:
         //printf("goStraight\n");
         motorA1PNS(P);
+        motorA2PNS(N);
+        motorB1PNS(N);
+        motorB2PNS(P);
         motorA1();
 
-        motorA2PNS(N);
+       
         motorA2();
 
-        motorB1PNS(N);
+        
         motorB1();
 
-        motorB2PNS(P);
+        
         motorB2();
         
         break;
 
     case stp:
-      setSpdA1(0);
-      setSpdA2(0);
-      setSpdB1(0);
-      setSpdB2(0);
+        motorA1();
+        motorA2();
+        motorB1();
+        motorB2();
 
       motorA1PNS(S);
       motorA2PNS(S);
@@ -805,22 +1210,42 @@ void directions(){
 }
 
 
+/*
+* 功能: 路径序列
+* 参数: 任务结构体missions的每一项标记位
+*/
+
+
+missions* addmissions(){
+    
+
+}
+
+
+
+
 
 /*
 * 功能: 增加一个路径序列项
 * 参数: 任务结构体mission的每一项标记位
 */
-mission* addMission(bool a,bool b,bool c,bool d,bool e)
+mission* addMission(bool A,bool B,bool C,bool D,bool E,bool M,bool M_1,bool M_2,bool M_3)
 {
   mission* currentMission = NULL;
 
   currentMission = (mission*)malloc(sizeof(mission));
 
-  currentMission->A = a;
-  currentMission->B = b;
-  currentMission->C = c;
-  currentMission->D = d;
-  currentMission->E = e;
+  currentMission->A = A;
+  currentMission->B = B;
+  currentMission->C = C;
+  currentMission->D = D;
+  currentMission->E = E;
+
+  currentMission->M = M;
+  currentMission->M_1 = M_1;
+  currentMission->M_2 = M_2;
+  currentMission->M_3 = M_3;
+
   currentMission->next = NULL;
   return currentMission;
   
@@ -840,13 +1265,13 @@ mission* createMissionList(short num,mission* missArry)
   {
     if (flag)
     {
-      head = addMission(missArry[i].A,missArry[i].B,missArry[i].C,missArry[i].D,missArry[i].E);
+      head = addMission(missArry[i].A,missArry[i].B,missArry[i].C,missArry[i].D,missArry[i].E,missArry[i].M,missArry[i].M_1,missArry[i].M_2,missArry[i].M_3);
       p = head;
       flag = false;
       continue;
     }
 
-    p->next = addMission(missArry[i].A,missArry[i].B,missArry[i].C,missArry[i].D,missArry[i].E);
+    p->next = addMission(missArry[i].A,missArry[i].B,missArry[i].C,missArry[i].D,missArry[i].E,missArry[i].M,missArry[i].M_1,missArry[i].M_2,missArry[i].M_3);
     p = p->next;
   }
 
@@ -878,73 +1303,83 @@ void traverseMission(){
 * 将每一个任务的路径序列填入该函数
 * 参数: 无,使用全局变量任务序列
 */
-void missionsInit(){
+missions* missionsInit(){
   //路径序列,每一个任务的路径,共有14个
-  mission missionAry[12];
+//   mission missionAry[14];
 
-  //mission* p = NULL;
+    missions* p = NULL;
+    missions* head = NULL;
 
 
 
   //任务序列
 
+    head = p = (missions*)malloc(sizeof(missions));
 
   //扫码
-  currentMissions[0].head = createMissionList(12,missionAry);
-  currentMissions[0].flag = true;
+    head->head = S_Code();
+    head->flag = true;
 
-
-  //原料区1
-  currentMissions[1].head = createMissionList(12,missionAry);
-  currentMissions[1].flag = true;
-
-
-  //粗加工区1
-  currentMissions[2].head = createMissionList(12,missionAry);
-  currentMissions[2].flag = true;
-  //粗加工区2
-  currentMissions[3].head = createMissionList(12,missionAry);
-  currentMissions[3].flag = false;
-
-
-  //半成品区1
-  currentMissions[4].head = createMissionList(12,missionAry);
-  currentMissions[4].flag = true;
-  //半成品区2
-  currentMissions[5].head = createMissionList(12,missionAry);
-  currentMissions[5].flag = false;
-
+    p = (missions*)malloc(sizeof(mission));
 
   //原料区1
-  currentMissions[6].head = createMissionList(12,missionAry);
-  currentMissions[6].flag = true;
-  //原料区2
-  currentMissions[7].head = createMissionList(12,missionAry);
-  currentMissions[7].flag = false;
+    p->head = T_Obj();
+    p->flag = true;
 
-
-  //粗加工区1
-  currentMissions[8].head = createMissionList(12,missionAry);
-  currentMissions[8].flag = true;
-  //粗加工区2
-  currentMissions[9].head = createMissionList(12,missionAry);
-  currentMissions[9].flag = false;
+    head->next = p;
+    p->next = NULL;
 
 
 
-  //半成品区1
-  currentMissions[10].head = createMissionList(12,missionAry);
-  currentMissions[10].flag = true;
-  //半成品区2
-  currentMissions[11].head = createMissionList(12,missionAry);
-  currentMissions[11].flag = false;
+    return head;
 
-  //终点区1
-  currentMissions[12].head = createMissionList(12,missionAry);
-  currentMissions[12].flag = true;
-  //终点区2
-  currentMissions[13].head = createMissionList(12,missionAry);
-  currentMissions[13].flag = false;
+
+//   //粗加工区1
+//   currentMissions[2].head = createMissionList(12,missionAry);
+//   currentMissions[2].flag = true;
+//   //粗加工区2
+//   currentMissions[3].head = createMissionList(12,missionAry);
+//   currentMissions[3].flag = false;
+
+
+//   //半成品区1
+//   currentMissions[4].head = createMissionList(12,missionAry);
+//   currentMissions[4].flag = true;
+//   //半成品区2
+//   currentMissions[5].head = createMissionList(12,missionAry);
+//   currentMissions[5].flag = false;
+
+
+//   //原料区1
+//   currentMissions[6].head = createMissionList(12,missionAry);
+//   currentMissions[6].flag = true;
+//   //原料区2
+//   currentMissions[7].head = createMissionList(12,missionAry);
+//   currentMissions[7].flag = false;
+
+
+//   //粗加工区1
+//   currentMissions[8].head = createMissionList(12,missionAry);
+//   currentMissions[8].flag = true;
+//   //粗加工区2
+//   currentMissions[9].head = createMissionList(12,missionAry);
+//   currentMissions[9].flag = false;
+
+
+
+//   //半成品区1
+//   currentMissions[10].head = createMissionList(12,missionAry);
+//   currentMissions[10].flag = true;
+//   //半成品区2
+//   currentMissions[11].head = createMissionList(12,missionAry);
+//   currentMissions[11].flag = false;
+
+//   //终点区1
+//   currentMissions[12].head = createMissionList(12,missionAry);
+//   currentMissions[12].flag = true;
+//   //终点区2
+//   currentMissions[13].head = createMissionList(12,missionAry);
+//   currentMissions[13].flag = false;
 
 
 }
@@ -952,7 +1387,6 @@ void missionsInit(){
 
 /*
 * 路径规划
-* 规划当前方向
 * 
 */
 void pathPlan()
@@ -960,6 +1394,11 @@ void pathPlan()
     //状态更新控制因子
     bool Listflag = true;
 
+
+
+    //任务模式
+    if (currentStates == stp && mp->M){
+    }
 
 
 
@@ -990,13 +1429,13 @@ void pathPlan()
   //经过方格，移动到下一个路径
   if (flagA && flagD)
   {
-    p = p->next;
+    mp = mp->next;
     flagA = false;
     flagB = false;
     flagC = true;
     flagD = false;
     T1 = T2 = 0;
-    if (p == NULL){
+    if (mp == NULL){
         Listflag = false;
         currentStates = stp;
     }
@@ -1009,7 +1448,7 @@ void pathPlan()
 //封装为函数
 
     //前
-    if (!(p->A) && !(p->B) && Listflag)
+    if (!(mp->A) && !(mp->B) && Listflag)
     {
       //更新当前方向
       currentStates = goStraight;
@@ -1018,7 +1457,7 @@ void pathPlan()
       
     }
     //后
-    if (!(p->A) && p->B && Listflag)
+    if (!(mp->A) && mp->B && Listflag)
     {
       //更新当前方向
       currentStates = goBack;
@@ -1026,7 +1465,7 @@ void pathPlan()
       mid_line_flag = false;
     }
     //左
-    if (p->A && !(p->B) && Listflag)
+    if (mp->A && !(mp->B) && Listflag)
     {
       //更新当前方向
       currentStates = Left;
@@ -1034,7 +1473,7 @@ void pathPlan()
        mid_line_flag = false;
     }
     //右
-    if (p->A && p->B && Listflag)
+    if (mp->A && mp->B && Listflag)
     {
       //更新当前方向
       currentStates = Right;
@@ -1042,7 +1481,7 @@ void pathPlan()
        mid_line_flag = false;
     }
     //停止
-    if (p->C && Listflag)
+    if (mp->C && Listflag)
     {
         currentStates = stp;
          micro_line_flag = false;
@@ -1053,26 +1492,26 @@ void pathPlan()
 
     //线条模式 前压线
 
-    if (p->D && Listflag && !(p->A) && !(p->B))
+    if (mp->D && Listflag && !(mp->A) && !(mp->B))
     {
         micro_flag_F = true;
         currentStates = micro_line_F;
     }
     
     //线条模式 后压线
-    if (p->D && Listflag && !(p->A) && p->B)
+    if (mp->D && Listflag && !(mp->A) && mp->B)
     {
         micro_flag_B = true;
         currentStates = micro_line_B;
     }
     //线条模式 左压线
-    if (p->D && Listflag && p->A && !(p->B))
+    if (mp->D && Listflag && mp->A && !(mp->B))
     {
         micro_flag_L = true;
         currentStates = micro_line_L;
     }
     //线条模式 右压线
-    if (p->D && Listflag && p->A && p->B)
+    if (mp->D && Listflag && mp->A && mp->B)
     {
         micro_flag_R = true;
         currentStates = micro_line_R;
@@ -1081,32 +1520,26 @@ void pathPlan()
 
     //中线模式 前
 
-    if (p->E && !(p->A) && !(p->B)){
+    if (mp->E && !(mp->A) && !(mp->B)){
       mid_flag_F = true;
       currentStates = mid_line_F;
     }
     //中线模式 后
-    if (p->E && !(p->A) && p->B){
+    if (mp->E && !(mp->A) && mp->B){
       mid_flag_B = true;
       currentStates = mid_line_B;
     }
     //中线模式 左
-    if (p->E && p->A && !(p->B)){
+    if (mp->E && mp->A && !(mp->B)){
       mid_flag_L = true;
       currentStates = mid_line_L;
     }
     //中线模式 右
-    if (p->E && p->A && p->B){
+    if (mp->E && mp->A && mp->B){
       mid_flag_R = true;
       currentStates = mid_line_R;
     }
     
-
-
-
-
-
-
 
 
 
@@ -1119,11 +1552,6 @@ void pathPlan()
   case goStraight:
   
   //上次状态为特殊模式
-    if (micro_line_flag || mid_line_flag){
-        flagA = true;
-        micro_flag_B = micro_flag_F = micro_flag_L = micro_flag_R = false;
-        mid_flag_B = mid_flag_F = mid_flag_R = mid_flag_L = false;
-    }
 
 
     if (Sensor_F_M == 0)
@@ -1132,35 +1560,31 @@ void pathPlan()
     }
     if (Sensor_B_M == 0 && flagA)
     {
-        //tick-pwm表
+        //tick-mpwm表
         flagB = true;
 
     }
 
-    if (Sensor_B_M == 1 && flagB)
+    if (flagB)
     {
-        T2 = getTickTime();
+        flagD = true;
+        // T2 = getTickTime();
 
-        if (flagC)
-        {
-            T1 = T2;
-            flagC = false;
-        }
+        // if (flagC)
+        // {
+        //     T1 = T2;
+        //     flagC = false;
+        // }
         
-        if (T2 - T1 > tickThreshold)
-        {
-            flagD = true;
-        }
+        // if (T2 - T1 > tickThreshold)
+        // {
+        //     flagD = true;
+        // }
     }
     break;
   case goBack:
 
   //上次状态为特殊模式
-    if (micro_line_flag || mid_line_flag){
-        flagA = true;
-        micro_flag_B = micro_flag_F = micro_flag_L = micro_flag_R = false;
-        mid_flag_B = mid_flag_F = mid_flag_R = mid_flag_L = false;
-    }
 
     if (Sensor_B_M == 0)
     {
@@ -1172,31 +1596,27 @@ void pathPlan()
 
     }
 
-    if(Sensor_F_M == 1 && flagB)
+    if(flagB)
     {
-        T2 = getTickTime();
+        flagD = true;
+        // T2 = getTickTime();
 
-        if (flagC)
-        {
-            T1 = T2;
-            flagC = false;
-        }
+        // if (flagC)
+        // {
+        //     T1 = T2;
+        //     flagC = false;
+        // }
         
-        if (T2 - T1 > tickThreshold)
-        {
-            flagD = true;
-        }
+        // if (T2 - T1 > tickThreshold)
+        // {
+        //     flagD = true;
+        // }
     }
     break;
 
   case Left:
 
   //上次状态为特殊模式
-    if (micro_line_flag || mid_line_flag){
-        flagA = true;
-        micro_flag_B = micro_flag_F = micro_flag_L = micro_flag_R = false;
-        mid_flag_B = mid_flag_F = mid_flag_R = mid_flag_L = false;
-    }
     if (Sensor_L_M == 0)
     {
       flagA = true;
@@ -1205,20 +1625,21 @@ void pathPlan()
     {
         flagB = true;
     }
-    if (Sensor_R_M == 1 && flagB)
+    if (flagB)
     {
-        T2 = getTickTime();
+        flagD = true;
+        // T2 = getTickTime();
 
-        if (flagC)
-        {
-            T1 = T2;
-            flagC = false;
-        }
+        // if (flagC)
+        // {
+        //     T1 = T2;
+        //     flagC = false;
+        // }
         
-        if (T2 - T1 > tickThreshold + 30)
-        {
-            flagD = true;
-        }
+        // if (T2 - T1 > tickThreshold + 30)
+        // {
+        //     flagD = true;
+        // }
     }
     break;
     
@@ -1226,11 +1647,6 @@ void pathPlan()
   case Right:
 
   //上次状态为特殊模式
-    if (micro_line_flag || mid_line_flag){
-        flagA = true;
-        micro_flag_B = micro_flag_F = micro_flag_L = micro_flag_R = false;
-        mid_flag_B = mid_flag_F = mid_flag_R = mid_flag_L = false;
-    }
     if (Sensor_R_M == 0)
     {
       flagA = true;
@@ -1240,20 +1656,21 @@ void pathPlan()
         flagB =true;
     }
 
-    if (Sensor_L_M == 1 && flagB)
+    if (flagB)
     {
-        T2 = getTickTime();
+        flagD = true;
+        // T2 = getTickTime();
 
-        if (flagC)
-        {
-            T1 = T2;
-            flagC = false;
-        }
+        // if (flagC)
+        // {
+        //     T1 = T2;
+        //     flagC = false;
+        // }
         
-        if (T2 - T1 > tickThreshold + 30)
-        {
-            flagD = true;
-        }
+        // if (T2 - T1 > tickThreshold + 30)
+        // {
+        //     flagD = true;
+        // }
     }
     
     break;
@@ -1332,6 +1749,7 @@ void pathPlan()
   default:
     break;
   }
+//   Serial.println(currentStates);
 
 }
 /*
@@ -1339,76 +1757,166 @@ void pathPlan()
 * 将规划好的路径存入该函数
 */
 
-void test(){
-  mission demo[7];
+//扫码
+mission* S_Code(){
+  mission demo[5];
   //L
   demo[0].A = true;
   demo[0].B = false;
   demo[0].C = false;
-  demo[0].D = false;
+  demo[0].D = true;
   demo[0].E = false;
+  demo[0].M = false;
+  demo[0].M_1 = false;
+  demo[0].M_2 = false;
+  demo[0].M_3 = false;
   //L
-  demo[1].A = true;
+  demo[1].A = false;
   demo[1].B = false;
   demo[1].C = false;
   demo[1].D = false;
   demo[1].E = false;
-  //L
-  demo[2].A = true;
+  demo[1].M = false;
+  demo[1].M_1 = false;
+  demo[1].M_2 = false;
+  demo[1].M_3 = false;
+//   //L
+  demo[2].A = false;
   demo[2].B = false;
   demo[2].C = false;
   demo[2].D = false;
   demo[2].E = false;
-  //B
-  demo[3].A = true;
-  demo[3].B = false;
+  demo[2].M = false;
+  demo[2].M_1 = false;
+  demo[2].M_2 = false;
+  demo[2].M_3 = false;
+//
+  demo[3].A = false;
+  demo[3].B = true;
   demo[3].C = false;
-  demo[3].D = false;
+  demo[3].D = true;
   demo[3].E = false;
+  demo[3].M = false;
+  demo[3].M_1 = false;
+  demo[3].M_2 = false;
+  demo[3].M_3 = false;
 
-
-  //L
+//扫码请求服务
   demo[4].A = false;
-  demo[4].B = true;
-  demo[4].C = false;
+  demo[4].B = false;
+  demo[4].C = true;
   demo[4].D = false;
   demo[4].E = false;
+  demo[4].M = true;
+  demo[4].M_1 = false;
+  demo[4].M_2 = false;
+  demo[4].M_3 = false;
 
   
-////后
-//  demo[5].A = false;
-//  demo[5].B = true;
-//  demo[5].C = false;
-//  demo[5].D = true;
-//  demo[5].E = false;
 
-//左
+  return createMissionList(5,demo);
+  
+}
+
+
+
+//物料区
+mission* T_Obj(){
+  mission demo[7];
+  //Front
+  demo[0].A = false;
+  demo[0].B = false;
+  demo[0].C = false;
+  demo[0].D = false;
+  demo[0].E = false;
+  demo[0].M = false;
+  demo[0].M_1 = false;
+  demo[0].M_2 = false;
+  demo[0].M_3 = false;
+  
+  //Front
+  demo[1].A = false;
+  demo[1].B = false;
+  demo[1].C = false;
+  demo[1].D = false;
+  demo[1].E = false;
+  demo[1].M = false;
+  demo[1].M_1 = false;
+  demo[1].M_2 = false;
+  demo[1].M_3 = false;
+  //Front
+  demo[2].A = false;
+  demo[2].B = false;
+  demo[2].C = false;
+  demo[2].D = false;
+  demo[2].E = false;
+  demo[2].M = false;
+  demo[2].M_1 = false;
+  demo[2].M_2 = false;
+  demo[2].M_3 = false;
+
+
+
+  //Right-Line
+  demo[3].A = true;
+  demo[3].B = true;
+  demo[3].C = false;
+  demo[3].D = true;
+  demo[3].E = false;
+  demo[3].M = false;
+  demo[3].M_1 = false;
+  demo[3].M_2 = false;
+  demo[3].M_3 = false;
+
+
+  //Stop-Grab_SecondFloor
+  demo[4].A = false;
+  demo[4].B = false;
+  demo[4].C = true;
+  demo[4].D = false;
+  demo[4].E = false;
+  demo[4].M = true;
+  demo[4].M_1 = false;
+  demo[4].M_2 = false;
+  demo[4].M_3 = true;
+
+
+
+
+  //Front-Mid-Line
   demo[5].A = false;
   demo[5].B = false;
   demo[5].C = false;
-  demo[5].D = true;
-  demo[5].E = false;
-//
-////右
-//  demo[5].A = false;
-//  demo[5].B = false;
-//  demo[5].C = false;
-//  demo[5].D = true;
-//  demo[5].E = false;
+  demo[5].D = false;
+  demo[5].E = true;
+  demo[5].M = false;
+  demo[5].M_1 = false;
+  demo[5].M_2 = false;
+  demo[5].M_3 = false;
 
+
+  //Stop-Grab-SecondFloor
   demo[6].A = false;
   demo[6].B = false;
   demo[6].C = true;
   demo[6].D = false;
   demo[6].E = false;
+  demo[6].M = true;
+  demo[6].M_1 = false;
+  demo[6].M_2 = false;
+  demo[6].M_3 = true;
 
-
-  
-
-  testMission =  createMissionList(7,demo);
-
+  return createMissionList(7,demo);
   
 }
+/*
+*动态规划
+*
+*/
+void dymanicPlan(){
+
+}
+
 
 
 /*
@@ -1420,6 +1928,8 @@ void test(){
 
 void stateFix()
 {
+
+    
   if (currentStates >4 && currentStates<9){
     return;
   }
@@ -1476,6 +1986,128 @@ void stateFix()
             FixCtrlFlag = true;
         }
 
+        //出格检测
+        //ctrlFlag为true时,偏移检测未运行
+        if (ctrlFlag){
+            //以两个传感器碰线为依据
+
+
+            //左侧碰线
+            if ( (!Sensor_L_M && !Sensor_L_R) || (!Sensor_L_M && !Sensor_L_L) || (!Sensor_L_M && !Sensor_L_R && !Sensor_L_L)){
+                
+                setSpdA1(0);
+                setSpdA2(0);
+                setSpdB1(0);
+                setSpdB2(0);
+
+                while (true)
+                {
+                    Sensor_L_R = digitalRead(SensorPinL_3);
+                    Sensor_L_L = digitalRead(SensorPinL_1);
+                    Sensor_L_M = digitalRead(SensorPinL_2);
+
+
+                    motorA1PNS(P);
+                    motorA2PNS(N);
+                    motorB1PNS(N);
+                    motorB2PNS(P);
+
+                    setSpdA1(80);
+                    setSpdA2(80);
+                    setSpdB1(80);
+                    setSpdB2(80);
+
+                    motorA1();
+                    motorA2();
+                    motorB1();
+                    motorB2();
+
+                    //跳出条件,俩个及以上没有碰线
+                    if ( (Sensor_L_R && Sensor_L_M )  || (Sensor_L_L && Sensor_L_M ) || (Sensor_L_L && Sensor_L_R ) || ( Sensor_L_L && Sensor_L_M && Sensor_L_R) ){
+
+                        // 换向保护
+                        motorA1PNS(S);
+                        motorA2PNS(S);
+                        motorB1PNS(S);
+                        motorB2PNS(S);
+                        //速度恢复
+                        setSpdA1(targetSpd);
+                        setSpdA2(targetSpd);
+                        setSpdB1(targetSpd);
+                        setSpdB2(targetSpd);
+                        // Serial.println("左偏跳出");
+                        break;
+
+                    }
+
+
+
+
+                }
+                
+
+            }
+
+
+            //右侧碰线
+
+            if ( (!Sensor_R_M && !Sensor_R_R) || (!Sensor_R_M && !Sensor_R_L) || (!Sensor_R_M && !Sensor_R_L && !Sensor_R_R) ){
+                setSpdA1(0);
+                setSpdA2(0);
+                setSpdB1(0);
+                setSpdB2(0);
+
+                while (true)
+                {
+                    Sensor_R_L = digitalRead(SensorPinR_1);
+                    Sensor_R_R = digitalRead(SensorPinR_3);
+                    Sensor_R_M = digitalRead(SensorPinR_2);
+
+                    motorA1PNS(N);
+                    motorA2PNS(P);
+                    motorB1PNS(P);
+                    motorB2PNS(N);
+
+
+                    setSpdA1(80);
+                    setSpdA2(80);
+                    setSpdB1(80);
+                    setSpdB2(80);
+
+                    motorA1();
+                    motorA2();
+                    motorB1();
+                    motorB2();
+
+
+                    //跳出条件,俩个及以上没有碰线
+                    if ( (Sensor_R_R && Sensor_R_M )  || (Sensor_R_L && Sensor_R_M ) || (Sensor_R_L && Sensor_R_R) || (Sensor_R_L && Sensor_R_M && Sensor_R_R)){
+
+                        // 换向保护
+                        motorA1PNS(S);
+                        motorA2PNS(S);
+                        motorB1PNS(S);
+                        motorB2PNS(S);
+                        //速度恢复
+                        setSpdA1(targetSpd);
+                        setSpdA2(targetSpd);
+                        setSpdB1(targetSpd);
+                        setSpdB2(targetSpd);
+                        break;
+
+
+                    }
+
+
+
+
+                }
+            }
+
+
+
+        }
+
 
         //偏左未修正状态
         if (SensorFlagR)
@@ -1505,11 +2137,11 @@ void stateFix()
             ctrlFlag = true;
             SensorFlagR = false;
             //减速修正
-            setSpdA2(targetSpd + 3);
+            setSpdA2(targetSpd);
             setSpdB1(targetSpd);
             //加速修正
             setSpdA1(targetSpd);
-            setSpdB2(targetSpd + 3);
+            setSpdB2(targetSpd);
 
         }
         
@@ -1541,9 +2173,9 @@ void stateFix()
             Fix_T1 = Fix_T2 = 0;
             //减速恢复
             setSpdA1(targetSpd);
-            setSpdB2(targetSpd + 3);
+            setSpdB2(targetSpd);
             //加速恢复
-            setSpdA2(targetSpd + 3);
+            setSpdA2(targetSpd);
             setSpdB1(targetSpd);
 
         }
@@ -1576,6 +2208,128 @@ void stateFix()
             // Serial.println(" ============ 偏左  =============");
         }
 
+        //出格检测
+        //ctrlFlag为true时,偏移检测未运行
+        if (ctrlFlag){
+            //以两个传感器碰线为依据
+
+
+            //左侧碰线
+            if ( (!Sensor_L_M && !Sensor_L_R) || (!Sensor_L_M && !Sensor_L_L) || (!Sensor_L_M && !Sensor_L_R && !Sensor_L_L)){
+                
+                setSpdA1(0);
+                setSpdA2(0);
+                setSpdB1(0);
+                setSpdB2(0);
+
+                while (true)
+                {
+                    Sensor_L_R = digitalRead(SensorPinL_3);
+                    Sensor_L_L = digitalRead(SensorPinL_1);
+                    Sensor_L_M = digitalRead(SensorPinL_2);
+
+
+                    motorA1PNS(P);
+                    motorA2PNS(N);
+                    motorB1PNS(N);
+                    motorB2PNS(P);
+
+                    setSpdA1(80);
+                    setSpdA2(80);
+                    setSpdB1(80);
+                    setSpdB2(80);
+
+                    motorA1();
+                    motorA2();
+                    motorB1();
+                    motorB2();
+
+                    //跳出条件,俩个及以上没有碰线
+                    if ( (Sensor_L_R && Sensor_L_M )  || (Sensor_L_L && Sensor_L_M ) || (Sensor_L_L && Sensor_L_R)  || (Sensor_L_L && Sensor_L_M && Sensor_L_R)){
+
+                        // 换向保护
+                        motorA1PNS(S);
+                        motorA2PNS(S);
+                        motorB1PNS(S);
+                        motorB2PNS(S);
+                        //速度恢复
+                        setSpdA1(targetSpd);
+                        setSpdA2(targetSpd);
+                        setSpdB1(targetSpd);
+                        setSpdB2(targetSpd);
+                        // Serial.println("左偏跳出");
+                        break;
+
+                    }
+
+
+
+
+                }
+                
+
+            }
+
+
+            //右侧碰线
+
+            if ( (!Sensor_R_M && !Sensor_R_R) || (!Sensor_R_M && !Sensor_R_L) || (!Sensor_R_M && !Sensor_R_L && !Sensor_R_R) ){
+                setSpdA1(0);
+                setSpdA2(0);
+                setSpdB1(0);
+                setSpdB2(0);
+
+                while (true)
+                {
+                    Sensor_R_L = digitalRead(SensorPinR_1);
+                    Sensor_R_R = digitalRead(SensorPinR_3);
+                    Sensor_R_M = digitalRead(SensorPinR_2);
+
+                    motorA1PNS(N);
+                    motorA2PNS(P);
+                    motorB1PNS(P);
+                    motorB2PNS(N);
+
+
+                    setSpdA1(80);
+                    setSpdA2(80);
+                    setSpdB1(80);
+                    setSpdB2(80);
+
+                    motorA1();
+                    motorA2();
+                    motorB1();
+                    motorB2();
+
+
+                    //跳出条件,俩个及以上没有碰线
+                    if ( (Sensor_R_R && Sensor_R_M )  || (Sensor_R_L && Sensor_R_M ) || (Sensor_R_L && Sensor_R_R) || (Sensor_R_L && Sensor_R_M && Sensor_R_R)){
+
+                        // 换向保护
+                        motorA1PNS(S);
+                        motorA2PNS(S);
+                        motorB1PNS(S);
+                        motorB2PNS(S);
+                        //速度恢复
+                        setSpdA1(targetSpd);
+                        setSpdA2(targetSpd);
+                        setSpdB1(targetSpd);
+                        setSpdB2(targetSpd);
+                        break;
+
+
+                    }
+
+
+
+
+                }
+            }
+
+
+
+        }
+
 
         //偏左未修正
 
@@ -1602,11 +2356,11 @@ void stateFix()
             // Fix_T1 = Fix_T2 = 0;
             //Serial.println("=================偏左恢复正常===================");
             //减速修正
-            setSpdA2(targetSpd + 3);
+            setSpdA2(targetSpd);
             setSpdB1(targetSpd);
             //加速修正
             setSpdA1(targetSpd);
-            setSpdB2(targetSpd + 3);
+            setSpdB2(targetSpd);
 
         }
         
@@ -1634,9 +2388,9 @@ void stateFix()
 
             //减速恢复
             setSpdA1(targetSpd);
-            setSpdB2(targetSpd + 3);
+            setSpdB2(targetSpd);
             //加速恢复
-            setSpdA2(targetSpd + 3);
+            setSpdA2(targetSpd);
             setSpdB1(targetSpd);
 
         }
@@ -1667,6 +2421,130 @@ void stateFix()
         }
 
 
+        //出格检测
+        //ctrlFlag为true时,偏移检测未运行
+        if (ctrlFlag){
+            //以两个传感器碰线为依据
+
+
+            //左侧碰线(当前朝向)
+            if ( (!Sensor_B_M && !Sensor_B_R) || (!Sensor_B_M && !Sensor_B_L) || (!Sensor_B_M && !Sensor_B_R && !Sensor_B_L)){
+                
+                // setSpdA1(0);
+                // setSpdA2(0);
+                // setSpdB1(0);
+                // setSpdB2(0);
+
+                while (true)
+                {
+                    Sensor_B_L = digitalRead(SensorPinB_1);
+                    Sensor_B_R = digitalRead(SensorPinB_3);
+                    Sensor_B_M = digitalRead(SensorPinB_2);
+
+
+                    // motorA1PNS(N);
+                    // motorA2PNS(P);
+                    // motorB1PNS(P);
+                    // motorB2PNS(N);
+
+                    setSpdA1(spdA1 - 0.4);
+                    setSpdA2(spdA2);
+                    setSpdB1(spdB1);
+                    setSpdB2(spdB2  -0.4);
+
+                    motorA1();
+                    motorA2();
+                    motorB1();
+                    motorB2();
+
+                    //跳出条件,俩个及以上没有碰线
+                    if ( (Sensor_B_R && Sensor_B_M )  || (Sensor_B_L && Sensor_B_M ) || (Sensor_B_L && Sensor_B_R)  || (Sensor_B_L && Sensor_B_M && Sensor_B_R)){
+
+                        // 换向保护
+                        motorA1PNS(S);
+                        motorA2PNS(S);
+                        motorB1PNS(S);
+                        motorB2PNS(S);
+                        //速度恢复
+                        setSpdA1(targetSpd);
+                        setSpdA2(targetSpd);
+                        setSpdB1(targetSpd);
+                        setSpdB2(targetSpd);
+                        // Serial.println("左偏跳出");
+                        break;
+
+                    }
+
+
+
+
+                }
+                
+
+            }
+
+
+            //右侧碰线(当前朝向)
+
+            if ( (!Sensor_F_M && !Sensor_F_R) || (!Sensor_F_M && !Sensor_F_L) || (!Sensor_F_M && !Sensor_F_L && !Sensor_F_R) ){
+                // setSpdA1(0);
+                // setSpdA2(0);
+                // setSpdB1(0);
+                // setSpdB2(0);
+
+                while (true)
+                {
+                    Sensor_F_L = digitalRead(SensorPinF_1);
+                    Sensor_F_R = digitalRead(SensorPinF_3);
+                    Sensor_F_M = digitalRead(SensorPinF_2);
+
+
+                    // motorA1PNS(N);
+                    // motorA2PNS(P);
+                    // motorB1PNS(P);
+                    // motorB2PNS(N);
+
+
+                    setSpdA1(spdA1);
+                    setSpdA2(spdA2 - 0.4);
+                    setSpdB1(spdB1 - 0.4);
+                    setSpdB2(spdB2);
+
+                    motorA1();
+                    motorA2();
+                    motorB1();
+                    motorB2();
+
+
+                    //跳出条件,俩个及以上没有碰线
+                    if ( (Sensor_F_R && Sensor_F_M )  || (Sensor_F_L && Sensor_F_M ) || (Sensor_F_L && Sensor_F_R) || (Sensor_F_L && Sensor_F_M && Sensor_F_R)){
+
+                        // 换向保护
+                        motorA1PNS(S);
+                        motorA2PNS(S);
+                        motorB1PNS(S);
+                        motorB2PNS(S);
+                        //速度恢复
+                        setSpdA1(targetSpd);
+                        setSpdA2(targetSpd);
+                        setSpdB1(targetSpd);
+                        setSpdB2(targetSpd);
+                        break;
+
+
+                    }
+
+
+
+
+                }
+            }
+
+
+
+        }
+
+
         //偏左未修正
 
         if (SensorFlagR)
@@ -1691,11 +2569,11 @@ void stateFix()
             ctrlFlag = true;
             // Fix_T1 = Fix_T2 = 0;
             //减速修正
-            setSpdA1(targetSpd + 7.2);
-            setSpdB2(targetSpd + 7.2);
+            setSpdA1(targetSpd);
+            setSpdB2(targetSpd);
             //加速修正
             setSpdA2(targetSpd);
-            setSpdB1(targetSpd + 4);
+            setSpdB1(targetSpd);
             
 
         }
@@ -1728,10 +2606,10 @@ void stateFix()
             // Fix_T1 = Fix_T2 = 0;
 
             //减速恢复
-            setSpdA2(targetSpd + 7.2);
-            setSpdB1(targetSpd + 4);
+            setSpdA2(targetSpd);
+            setSpdB1(targetSpd);
             //加速恢复
-            setSpdA1(targetSpd + 7.3);
+            setSpdA1(targetSpd);
             setSpdB2(targetSpd);
 
         }
@@ -1758,6 +2636,130 @@ void stateFix()
         }
 
 
+        //出格检测
+        //ctrlFlag为true时,偏移检测服务未运行
+        if (ctrlFlag){
+            //以两个传感器碰线为依据
+
+
+            //左侧碰线(当前朝向)
+            if ( (!Sensor_B_M && !Sensor_B_R) || (!Sensor_B_M && !Sensor_B_L) || (!Sensor_B_M && !Sensor_B_R && !Sensor_B_L)){
+                
+                // setSpdA1(0);
+                // setSpdA2(0);
+                // setSpdB1(0);
+                // setSpdB2(0);
+
+                while (true)
+                {
+                    Sensor_B_L = digitalRead(SensorPinB_1);
+                    Sensor_B_R = digitalRead(SensorPinB_3);
+                    Sensor_B_M = digitalRead(SensorPinB_2);
+
+
+                    // motorA1PNS(P);
+                    // motorA2PNS(P);
+                    // motorB1PNS(P);
+                    // motorB2PNS(P);
+
+                    setSpdA1(spdA1);
+                    setSpdA2(spdA2 - 0.4);
+                    setSpdB1(spdB1 - 0.4);
+                    setSpdB2(spdB2);
+
+                    motorA1();
+                    motorA2();
+                    motorB1();
+                    motorB2();
+
+                    //跳出条件,俩个及以上没有碰线
+                    if ( (Sensor_B_R && Sensor_B_M )  || (Sensor_B_L && Sensor_B_M ) || (Sensor_B_L && Sensor_B_R)  || (Sensor_B_L && Sensor_B_M && Sensor_B_R)){
+
+                        // 换向保护
+                        motorA1PNS(S);
+                        motorA2PNS(S);
+                        motorB1PNS(S);
+                        motorB2PNS(S);
+                        //速度恢复
+                        setSpdA1(targetSpd);
+                        setSpdA2(targetSpd);
+                        setSpdB1(targetSpd);
+                        setSpdB2(targetSpd);
+                        // Serial.println("左偏跳出");
+                        break;
+
+                    }
+
+
+
+
+                }
+                
+
+            }
+
+
+            //右侧碰线(当前朝向)
+
+            if ( (!Sensor_F_M && !Sensor_F_R) || (!Sensor_F_M && !Sensor_F_L) || (!Sensor_F_M && !Sensor_F_L && !Sensor_F_R) ){
+                // setSpdA1(0);
+                // setSpdA2(0);
+                // setSpdB1(0);
+                // setSpdB2(0);
+
+                while (true)
+                {
+                    Sensor_F_L = digitalRead(SensorPinF_1);
+                    Sensor_F_R = digitalRead(SensorPinF_3);
+                    Sensor_F_M = digitalRead(SensorPinF_2);
+
+
+                    // motorA1PNS(N);
+                    // motorA2PNS(N);
+                    // motorB1PNS(N);
+                    // motorB2PNS(N);
+
+
+                    setSpdA1(spdA1 - 0.4);
+                    setSpdA2(spdA2);
+                    setSpdB1(spdB1);
+                    setSpdB2(spdB2 - 0.4);
+
+                    motorA1();
+                    motorA2();
+                    motorB1();
+                    motorB2();
+
+
+                    //跳出条件,俩个及以上没有碰线
+                    if ( (Sensor_F_R && Sensor_F_M )  || (Sensor_F_L && Sensor_F_M ) || (Sensor_F_L && Sensor_F_R) || (Sensor_F_L && Sensor_F_M && Sensor_F_R)){
+
+                        // 换向保护
+                        motorA1PNS(S);
+                        motorA2PNS(S);
+                        motorB1PNS(S);
+                        motorB2PNS(S);
+                        //速度恢复
+                        setSpdA1(targetSpd);
+                        setSpdA2(targetSpd);
+                        setSpdB1(targetSpd);
+                        setSpdB2(targetSpd);
+                        break;
+
+
+                    }
+
+
+
+
+                }
+            }
+
+
+
+        }
+
+
         //偏左未修正
 
         if (SensorFlagR)
@@ -1781,11 +2783,11 @@ void stateFix()
             ctrlFlag = true;
             Fix_T1 = Fix_T2 = 0;
             //减速修正
-            setSpdA1(targetSpd + 7.3);
-            setSpdB2(targetSpd + 10.7);
+            setSpdA1(targetSpd);
+            setSpdB2(targetSpd);
             //加速修正
             setSpdA2(targetSpd);
-            setSpdB1(targetSpd + 4.9);
+            setSpdB1(targetSpd);
 
         }
         
@@ -1798,11 +2800,11 @@ void stateFix()
 //          Serial.println("===偏右修正中==");
             Fix_T2 = FixFctr_LR*(getTickTime() - Fix_T1);
             //减速修正
-            setSpdA2(spdA2 - Fix_T2);
-            setSpdB1(spdB1 + Fix_T2);
+            setSpdA2(targetSpd - Fix_T2);
+            setSpdB1(targetSpd + Fix_T2);
             //加速修正
-            setSpdA1(spdA1 - Fix_T2);
-            setSpdB2(spdB2 + Fix_T2);
+            setSpdA1(targetSpd - Fix_T2);
+            setSpdB2(targetSpd + Fix_T2);
 
         }
         //偏右已纠正
@@ -1815,18 +2817,20 @@ void stateFix()
 
             //减速恢复
             setSpdA2(targetSpd);
-            setSpdB1(targetSpd + 4.9);
+            setSpdB1(targetSpd);
             //加速恢复
-            setSpdA1(targetSpd + 7.3);
-            setSpdB2(targetSpd + 10.7);
+            setSpdA1(targetSpd);
+            setSpdB2(targetSpd);
         }
         break;
     //微调前模式
     case micro_line_F:
-        setSpdA1(targetSpd-20);
-        setSpdA2(targetSpd-20);
-        setSpdB1(targetSpd-20);
-        setSpdB2(targetSpd-20);
+        break;
+
+
+
+    case micro_line_B:
+        
         break;
         
     //微调左模式
@@ -1920,24 +2924,26 @@ bool get_data(){
     byte temp;
     bool temp_flag = false;
 
-    if (Serial.available()<0){
+    if (Serial1.available()<=0){
         return false;
     }
 
-    while (Serial.available()>0){
+    while (Serial1.available()>0 && i!=50){
         // 每次只读取一个字节    
-        temp = Serial.read();
+        temp = Serial1.read();
         if (temp_flag || temp == 0x23)
         {
             UART_DATABUF[i] = temp;
         }
-//        Serial.write(UART_DATABUF[i]);
-//        Serial.write("  ");
+//        Serial1.write(UART_DATABUF[i]);
+//        Serial1.write("  ");
         i++;
      }
-     Serial.flush();
+     Serial1.flush();
      return true;
  }
+
+
 
 /*
 *数据解码
@@ -1958,21 +2964,41 @@ bool decodes(){
             return false;
 
         }
-        //          b$             b@&x&y$            b&x&y&xxx$
+        //          b$             b@&(+/-)xx&(+/-)yy$            b&(+/-)xx&(+/-)yy&xxx$
         else if (UART_DATABUF[i] == UART_DECODE[1]){
-            //扫描下一个
+            //扫描下一个 36 '$'
             if (UART_DATABUF[i+1] == 36){
                 //切换状态,车辆移动至下一格子
+                for(int i = 0 ; i < 10; i++){
+                    Serial.println("移动");
+                }
+                return false;
             }
-            //抓取当前的
-            if (UART_DATABUF[i+2] == 64){
-                //解码,将数据存放至UART_DELTA[2]中
+            //抓取当前的 64 '@'
+            if (UART_DATABUF[i+1] == 64 && UART_DATABUF[i+10] == 36){
+                //解码,将数据存放至UART_DELTA中
                 //区分b@& - 1 2 & + 2 2$
+                decode_b(i);
+                // blbl(4);
+                for(int i = 0 ; i < 10; i++){
+                    Serial.print(UART_DELTA[0]);
+                    Serial.print("<------->");
+                    Serial.println(UART_DELTA[1]);
+                }
+                return false;
 
             }
             //抓取并存放路径规划
-            if (UART_DATABUF[i+2] == 38){
-                //解码,更新路径,存放偏差
+            if (UART_DATABUF[i+1] == 38 && UART_DATABUF[i+13] == 36){
+                //解码存放
+                decode_b(i);
+                //更新路径
+                for(int i = 0 ; i < 10; i++){
+                    // Serial1.print(UART_DELTA[0]);
+                    Serial.println("更新路径");
+                    // Serial1.println(UART_DELTA[1]);
+                }
+                return false;
             }
             //confmCode:b
 
@@ -2009,16 +3035,18 @@ void reqs(char* req_code,char* resp_code){
 
     while (uart_flag)
     {
-        Serial.flush();
+        Serial1.flush();
 
-        Serial.write(req_code,3);
+        Serial1.write(req_code,3);
 
-        // Serial.write("#B$");
+        // Serial1.write("#B$");
         //没有收到数据就跳出
         if (!get_data()){
+            blbl(5);
             continue;
         }
-
+//        blbl(100);
+        //请求成功,跳出循环
         uart_flag = respServices(decodes(),resp_code);
         
     }
@@ -2046,7 +3074,7 @@ bool respServices(bool flag,char* resp_code){
     if(!flag){
         while (i < 20)
         {      
-            Serial.write(resp_code,4);
+            Serial1.write(resp_code,4);
             i++;
             //中断服务加入特殊情况,如果收到openmv特殊请求,重新运行请求服务
         }
@@ -2063,10 +3091,73 @@ bool respServices(bool flag,char* resp_code){
 
 //数据解码服务
 void decode_b(int i){
-    
+    //b@&(+/-)xx&(+/-)yy$ #b@&+01&-19$
+    int code_count = 0;
+    while (true){
+        i++;
+        if (UART_DATABUF[i] == 38){
+            code_count++;
+        }   //"+/-" 43/45
+        if (UART_DATABUF[i] == 43 || UART_DATABUF[i] == 45){
+            //0~9
+            if (UART_DATABUF[i+1] > 47 && UART_DATABUF[i+1] < 58){
+
+                if (code_count == 1){
+                    
+                    UART_DELTA[0] = UART_DATABUF[i] == 43?char_decode(UART_DATABUF[i+1]) * 10 + char_decode(UART_DATABUF[i+2]):char_decode(UART_DATABUF[i+1]) * -10 + -1 * char_decode(UART_DATABUF[i+2]);
+                }
+                if(code_count ==2){
+                    UART_DELTA[1] = UART_DATABUF[i] == 43?char_decode(UART_DATABUF[i+1]) * 10 + char_decode(UART_DATABUF[i+2]):char_decode(UART_DATABUF[i+1]) * (-10) + -1 * char_decode(UART_DATABUF[i+2]);
+                    break;
+                }
+            }
+            
+        }
+    }
 }
 
 
+//数字解码
+short char_decode(byte UART_BYTE_DATA){
+    switch (UART_BYTE_DATA)
+    {
+    case 48:
+        return 0;
+        break;
+    case 49:
+        return 1;
+        break;
+    case 50:
+        return 2;
+        break;
+    case 51:
+        return 3;
+        break;
+    case 52:
+        return 4;
+        break;
+    case 53:
+        return 5;
+        break;
+    case 54:
+        return 6;
+        break;
+    case 55:
+        return 7;
+        break;
+    case 56:
+        return 8;
+        break;
+
+    case 57:
+        return 9;
+        break;
+    
+    default:
+        return 10;
+        break;
+    }
+}
 
 /*
  * 外部中断函数isr1~4
@@ -2100,24 +3191,18 @@ void isr3()
 }
 
 void acc(){
-  if (micro_line_flag){
-    targetSpd = 50;
-  }
-  else{
-    targetSpd = 100;
-  }
-  if(!(p->C) && spdA1 <= targetSpd){
-    spdA1 += 1;
-    spdA2 += 1;
-    spdB1 += 1;
-    spdB2 += 1;
-  }
-  if (p->C){
-    spdA1 -= 1;
-    spdA2 -= 1;
-    spdB1 -= 1;
-    spdB2 -= 1;
-  }
+    if (spdA1 < targetSpd){
+        spdA1+=1;
+        spdA2+=1;
+        spdB1+=1;
+        spdB2+=1;
+    }
+    else{
+        spdA1=spdA2=spdB1=spdB2 = targetSpd;
+        MsTimer2::stop();
+    }
+
+
 }
 
 void count(){
