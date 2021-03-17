@@ -229,9 +229,11 @@ byte UART_DATABUF[50];//数据缓冲区
 
 byte UART_DECODE[8] = {97,98,99,100,101,102,103,104};//请求服务确认码
 
-byte UART_TARGET[6];//任务码
+int UART_TARGET[6];//任务码
 
-byte UART_DELTA[2];//当前误差
+int UART_DELTA[3]={0,0,0};//当前误差
+
+byte UART_PLAN[3]={0,0,0};//规划
 /*===================================================UART===================================================*/
 
 byte BTData[50];
@@ -1035,6 +1037,7 @@ void directions(){
                 motorA2PNS(S);
                 motorB1PNS(S);
                 motorB2PNS(S);
+                // mp = mp->next;
 
                 break;
             }
@@ -1209,6 +1212,64 @@ void directions(){
   
 }
 
+
+
+//到达位置抓取动作
+void ctrl_grab_servo(){
+    int x;
+    
+    switch (UART_DELTA[0])
+    {
+    case 0:
+        x = 1500;
+        break;
+    case -10:
+        x = 1520;
+        break;
+
+    case 10:
+        x = 1485;
+        break;
+    case -20:
+        x = 1530;
+        break;
+    case 20:
+        x = 1477;
+        break;
+    case -30:
+        x = 1540;
+        break;
+    case 30:
+        x = 1450;
+        break;
+    default:
+        x = 1500;
+        break;
+    }
+
+    LobotServo servos[5];   //舵机ID位置结构数组
+    servos[0].ID = 2;       //2号舵机
+    servos[0].Position = 896;  //1400位置
+
+    servos[1].ID = 3;       //4号舵机
+    servos[1].Position = 1507;  //700位置
+
+    servos[2].ID = 4;       //2号舵机
+    servos[2].Position = 1477;  //1400位置
+
+    servos[3].ID = 5;       //4号舵机
+    servos[3].Position = 546;  //700位置
+
+    servos[4].ID = 6;       //2号舵机
+    servos[4].Position = x;  //1400位置
+
+    myse.moveServos(servos,5,9000);
+    delay(10000);
+    //抓取
+    myse.moveServo(2,1863,500);
+    delay(1000);
+    
+} 
 
 /*
 * 功能: 路径序列
@@ -1396,9 +1457,7 @@ void pathPlan()
 
 
 
-    //任务模式
-    if (currentStates == stp && mp->M){
-    }
+
 
 
 
@@ -1539,7 +1598,8 @@ void pathPlan()
       mid_flag_R = true;
       currentStates = mid_line_R;
     }
-    
+
+
 
 
 
@@ -1751,6 +1811,68 @@ void pathPlan()
   }
 //   Serial.println(currentStates);
 
+
+
+
+
+
+/*===========================任务规划==================================*/
+
+    //任务模式
+    if (currentStates == stp && mp->M){
+        //扫码请求
+        if ( !(mp->M_1) && !(mp->M_2) && !(mp->M_3) ){
+
+            //扫码请求
+            reqs("#A$","#Aa$");
+        }
+
+        //抓取请求
+        if ( !(mp->M_1) && !(mp->M_2) && mp->M_3 ){
+
+            //抓取请求
+            reqs("#B$","#Bb$");
+            //请求完成后有4种情况:抓取当请求扫描下一个 抓取当前并得到规划 请求下一个并得到规划
+            //如果第二次没有规划,抓取第三个
+            //抓取当前,该值为1
+            if (UART_DELTA[2]){
+
+                //如果没有规划
+                if (!UART_PLAN[0]){
+                    //抓取当前移动到下一个
+                    ctrl_grab_servo();
+                    //误差重置
+                    UART_DELTA[2] = 0;
+                    //切换路径
+                    mp = mp->next;
+                }
+
+                else{
+                    //抓取当前
+
+                    //动态规划路径
+                    dynamicGrabPlan();
+
+                    //等待抓取完毕
+                    delay(1);
+                }
+                
+            }
+
+            //请求扫描下一个   请求下一个并得到规划
+            else {
+                //已在通信服务里运行
+
+
+                
+            }
+
+        }
+
+    }
+    
+/*===========================任务规划==================================*/
+
 }
 /*
 * 路径序列测试函数
@@ -1770,7 +1892,7 @@ mission* S_Code(){
   demo[0].M_1 = false;
   demo[0].M_2 = false;
   demo[0].M_3 = false;
-  //L
+  //F
   demo[1].A = false;
   demo[1].B = false;
   demo[1].C = false;
@@ -1780,7 +1902,7 @@ mission* S_Code(){
   demo[1].M_1 = false;
   demo[1].M_2 = false;
   demo[1].M_3 = false;
-//   //L
+  //F
   demo[2].A = false;
   demo[2].B = false;
   demo[2].C = false;
@@ -1790,7 +1912,7 @@ mission* S_Code(){
   demo[2].M_1 = false;
   demo[2].M_2 = false;
   demo[2].M_3 = false;
-//
+  //R-Line
   demo[3].A = false;
   demo[3].B = true;
   demo[3].C = false;
@@ -1801,7 +1923,7 @@ mission* S_Code(){
   demo[3].M_2 = false;
   demo[3].M_3 = false;
 
-//扫码请求服务
+  //扫码请求
   demo[4].A = false;
   demo[4].B = false;
   demo[4].C = true;
@@ -1812,7 +1934,6 @@ mission* S_Code(){
   demo[4].M_2 = false;
   demo[4].M_3 = false;
 
-  
 
   return createMissionList(5,demo);
   
@@ -1844,6 +1965,9 @@ mission* T_Obj(){
   demo[1].M_1 = false;
   demo[1].M_2 = false;
   demo[1].M_3 = false;
+
+
+
   //Front
   demo[2].A = false;
   demo[2].B = false;
@@ -1895,7 +2019,7 @@ mission* T_Obj(){
   demo[5].M_3 = false;
 
 
-  //Stop-Grab-SecondFloor
+  //Stop-REQ-Grab-SecondFloor
   demo[6].A = false;
   demo[6].B = false;
   demo[6].C = true;
@@ -1910,11 +2034,187 @@ mission* T_Obj(){
   
 }
 /*
-*动态规划
-*
+*抓取动态规划
 */
-void dymanicPlan(){
+void dynamicGrabPlan(){
 
+    //规划有效 312  321  320  310  130
+    if (UART_PLAN[0]){
+        //320  310  130
+        if (!UART_PLAN[2]){
+            //320  310
+            if (UART_PLAN[0] == 3){
+                //320
+                if (UART_PLAN[1] == 2){
+
+                    mp->next = (mission*)malloc(sizeof(mission));
+                    //前
+                    mp->next->A = false;
+                    mp->next->B = false;
+                    mp->next->C = false;
+                    mp->next->D = false;
+                    mp->next->E = false;
+                    mp->next->M = false;
+                    mp->next->M_1 = false;
+                    mp->next->M_2 = false;
+                    mp->next->M_3 = false;
+
+                    mp->next->next = (mission*)malloc(sizeof(mission));
+
+                    //STOP-REQ-Grab
+                    mp->next->next->A = false;
+                    mp->next->next->B = false;
+                    mp->next->next->C = true;
+                    mp->next->next->D = false;
+                    mp->next->next->E = false;
+                    mp->next->next->M = true;
+                    mp->next->next->M_1 = false;
+                    mp->next->next->M_2 = false;
+                    mp->next->next->M_3 = true;
+
+                    mp->next->next->next = (mission*)malloc(sizeof(mission));
+
+                    //Back-Mid-Line
+                    mp->next->next->next->A = false;
+                    mp->next->next->next->B = true;
+                    mp->next->next->next->C = false;
+                    mp->next->next->next->D = false;
+                    mp->next->next->next->E = true;
+                    mp->next->next->next->M = false;
+                    mp->next->next->next->M_1 = false;
+                    mp->next->next->next->M_2 = false;
+                    mp->next->next->next->M_3 = false;
+
+                    mp->next->next->next->next = (mission*)malloc(sizeof(mission));
+
+                    //STOP-REQ-Grab
+                    mp->next->next->next->next->A = false;
+                    mp->next->next->next->next->B = false;
+                    mp->next->next->next->next->C = true;
+                    mp->next->next->next->next->D = false;
+                    mp->next->next->next->next->E = false;
+                    mp->next->next->next->next->M = false;
+                    mp->next->next->next->next->M_1 = false;
+                    mp->next->next->next->next->M_2 = false;
+                    mp->next->next->next->next->M_3 = true;
+
+                    mp->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+
+                    //前(复位到方格,准备进行物料放置)
+                    mp->next->next->next->next->next->A = false;
+                    mp->next->next->next->next->next->B = false;
+                    mp->next->next->next->next->next->C = false;
+                    mp->next->next->next->next->next->D = false;
+                    mp->next->next->next->next->next->E = false;
+                    mp->next->next->next->next->next->M = false;
+                    mp->next->next->next->next->next->M_1 = false;
+                    mp->next->next->next->next->next->M_2 = false;
+                    mp->next->next->next->next->next->M_3 = false;
+
+                    mp->next->next->next->next->next = NULL;
+
+
+
+
+                }
+
+
+
+
+
+            }
+
+
+
+
+
+
+
+
+            //130
+            else{
+                mission* p = NULL;
+                
+                p = (mission*)malloc(sizeof(mission));
+
+                mp->next = p;
+                //后
+                p->A = false;
+                p->B = true;
+                p->C = false;
+                p->D = false;
+                p->E = false;
+                p->M = false;
+                p->M_1 = false;
+                p->M_2 = false;
+                p->M_3 = false;
+
+                p->next = (mission*)malloc(sizeof(mission));
+                //STOP-REQ-Grab
+                p->next->A = false;
+                p->next->B = false;
+                p->next->C = true;
+                p->next->D = false;
+                p->next->E = false;
+                p->next->M = true;
+                p->next->M_1 = false;
+                p->next->M_2 = false;
+                p->next->M_3 = true;
+
+                p->next->next = (mission*)malloc(sizeof(mission));
+                
+                //前
+                p->next->next->A = false;
+                p->next->next->B = false;
+                p->next->next->C = false;
+                p->next->next->D = false;
+                p->next->next->E = false;
+                p->next->next->M = false;
+                p->next->next->M_1 = false;
+                p->next->next->M_2 = false;
+                p->next->next->M_3 = false;
+
+                p->next->next->next = (mission*)malloc(sizeof(mission));
+                //前
+                p->next->next->next->A = false;
+                p->next->next->next->B = false;
+                p->next->next->next->C = false;
+                p->next->next->next->D = false;
+                p->next->next->next->E = false;
+                p->next->next-next->>M = false;
+                p->next->next->next->M_1 = false;
+                p->next->next->next->M_2 = false;
+                p->next->next->next->M_3 = false;
+
+                p->next->next->next->next = (mission*)malloc(sizeof(mission));
+
+                //STOP-REQ-Grab
+                p->next->next->next->next->A = false;
+                p->next->next->next->next->B = false;
+                p->next->next->next->next->C = true;
+                p->next->next->next->next->D = false;
+                p->next->next->next->next->E = false;
+                p->next->next-next->next->M = true;
+                p->next->next->next->next->M_1 = false;
+                p->next->next->next->next->M_2 = false;
+                p->next->next->next->next->M_3 = true;
+
+                p->next->next->next->next->next = NULL;
+
+
+
+
+
+            }
+        }
+    }
+
+    //规划无效
+    else{
+        //直接动态规划抓取第三个
+    }
+
+    
 }
 
 
@@ -2952,8 +3252,8 @@ bool get_data(){
 bool decodes(){
     short i = 0;
 
-    
-    while (UART_DATABUF[i] != 36 && i<51){
+     
+    while (UART_DATABUF[i] != 36 && i < 51){
         
         
         //解码#a123321$
@@ -2964,27 +3264,24 @@ bool decodes(){
             return false;
 
         }
-        //          b$             b@&(+/-)xx&(+/-)yy$            b&(+/-)xx&(+/-)yy&xxx$
+        //          b$(扫描下一个)             b@&(+/-)xx&(+/-)yy$(抓取当前)            b&(+/-)xx&(+/-)yy&xxx$(抓取当前并规划)
         else if (UART_DATABUF[i] == UART_DECODE[1]){
             //扫描下一个 36 '$'
             if (UART_DATABUF[i+1] == 36){
                 //切换状态,车辆移动至下一格子
-                for(int i = 0 ; i < 10; i++){
-                    Serial.println("移动");
-                }
+                mp = mp->next;
+                //不可抓取
+                UART_DELTA[2] = 0;
                 return false;
             }
+
             //抓取当前的 64 '@'
             if (UART_DATABUF[i+1] == 64 && UART_DATABUF[i+10] == 36){
                 //解码,将数据存放至UART_DELTA中
-                //区分b@& - 1 2 & + 2 2$
+                //b@& - 1 2 & + 2 2$
                 decode_b(i);
-                // blbl(4);
-                for(int i = 0 ; i < 10; i++){
-                    Serial.print(UART_DELTA[0]);
-                    Serial.print("<------->");
-                    Serial.println(UART_DELTA[1]);
-                }
+                //可抓取
+                UART_DELTA[2] = 1;
                 return false;
 
             }
@@ -2992,12 +3289,8 @@ bool decodes(){
             if (UART_DATABUF[i+1] == 38 && UART_DATABUF[i+13] == 36){
                 //解码存放
                 decode_b(i);
+
                 //更新路径
-                for(int i = 0 ; i < 10; i++){
-                    // Serial1.print(UART_DELTA[0]);
-                    Serial.println("更新路径");
-                    // Serial1.println(UART_DELTA[1]);
-                }
                 return false;
             }
             //confmCode:b
@@ -3045,7 +3338,7 @@ void reqs(char* req_code,char* resp_code){
             blbl(5);
             continue;
         }
-//        blbl(100);
+        //blbl(100);
         //请求成功,跳出循环
         uart_flag = respServices(decodes(),resp_code);
         
@@ -3091,13 +3384,25 @@ bool respServices(bool flag,char* resp_code){
 
 //数据解码服务
 void decode_b(int i){
-    //b@&(+/-)xx&(+/-)yy$ #b@&+01&-19$
+
+    //  b @ &(+/-)xx &(+/-)yy $    #b@ &+01 &-19 $     b &(+/-)xx &(+/-)yy %xxx $     b %xxx $
+
     int code_count = 0;
     while (true){
         i++;
+
+        //数据结尾退出 $==36
+        if (UART_DATABUF == 36){
+            return;
+        }
+
+        // &==38
         if (UART_DATABUF[i] == 38){
             code_count++;
-        }   //"+/-" 43/45
+            continue;
+        }   
+        //"+/-" 43/45
+        
         if (UART_DATABUF[i] == 43 || UART_DATABUF[i] == 45){
             //0~9
             if (UART_DATABUF[i+1] > 47 && UART_DATABUF[i+1] < 58){
@@ -3105,19 +3410,41 @@ void decode_b(int i){
                 if (code_count == 1){
                     
                     UART_DELTA[0] = UART_DATABUF[i] == 43?char_decode(UART_DATABUF[i+1]) * 10 + char_decode(UART_DATABUF[i+2]):char_decode(UART_DATABUF[i+1]) * -10 + -1 * char_decode(UART_DATABUF[i+2]);
+                    continue;
                 }
                 if(code_count ==2){
                     UART_DELTA[1] = UART_DATABUF[i] == 43?char_decode(UART_DATABUF[i+1]) * 10 + char_decode(UART_DATABUF[i+2]):char_decode(UART_DATABUF[i+1]) * (-10) + -1 * char_decode(UART_DATABUF[i+2]);
-                    break;
+                    UART_DELTA[2] = 1;
+                    continue;
                 }
+
+                
+                
             }
             
         }
+
+
+        //规划 % == 37
+        if (UART_DATABUF[i] == 37){
+            //0~9
+            if (UART_DATABUF[i+1] > 48 && UART_DATABUF[i+1] < 52){
+                //存放规划
+                //规划为0,则无效
+                UART_PLAN[0] = UART_DATABUF[i+1];
+                UART_PLAN[1] = UART_DATABUF[i+2];
+                UART_PLAN[2] = UART_DATABUF[i+3];
+            }
+            
+        }
+
+
+
     }
 }
 
 
-//数字解码
+//数字解码,返回数字
 short char_decode(byte UART_BYTE_DATA){
     switch (UART_BYTE_DATA)
     {
