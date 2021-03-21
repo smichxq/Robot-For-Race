@@ -63,7 +63,7 @@ short Back_FixB2 = 4.2;
 
 
 
-// #include <LobotServoController.h>
+#include <LobotServoController.h>
 #include <MsTimer2.h>
 //方向
 #define goStraight 0
@@ -354,51 +354,52 @@ bool ctrl_flag = true;
 
 
 
-// LobotServoController myse(Serial3);//舵机控制
+LobotServoController myse(Serial3);//舵机控制
 
 void setup() {
     delay(200);
     
     sensorInit();
     mps = missionsInit();
-    mp = mps->head;
+    // mp = mps->head;
+    mp = test();
     Serial.begin(115200);
     //openmv通信
     Serial1.begin(19200);
     //机械臂通信
     Serial3.begin(9600);
 
-    while(mps){
-        while(mp){
-            Serial.println(mp->A,BIN);
-            Serial.println(mp->B,BIN);
-            Serial.println(mp->C,BIN);
-            Serial.println(mp->D,BIN);
-            Serial.println(mp->E,BIN);
-            Serial.println(mp->M,BIN);
-            Serial.println(mp->M_1,BIN);
-            Serial.println(mp->M_2,BIN);
-            Serial.println(mp->M_3,BIN);
-            Serial.println("===========================");
-            mp = mp->next;
-            delay(1111);
-        }
-        Serial.println("<><><><><><><><><><><><><><><><><<><<><<>");
-        mps = mps->next;
-    }
+    // while(mps){
+    //     while(mp){
+    //         Serial.println(mp->A,BIN);
+    //         Serial.println(mp->B,BIN);
+    //         Serial.println(mp->C,BIN);
+    //         Serial.println(mp->D,BIN);
+    //         Serial.println(mp->E,BIN);
+    //         Serial.println(mp->M,BIN);
+    //         Serial.println(mp->M_1,BIN);
+    //         Serial.println(mp->M_2,BIN);
+    //         Serial.println(mp->M_3,BIN);
+    //         Serial.println("===========================");
+    //         mp = mp->next;
+    //         delay(1111);
+    //     }
+    //     Serial.println("<><><><><><><><><><><><><><><><><<><<><<>");
+    //     mps = mps->next;
+    // }
 
 //  IntServiceInit();
   //前后 A2 +3 B2 +3
   //左 A1 +7.2 B1 +4 B2 +7.2
   //右 A1 +7.3 B1 +4.9 B2 +10.7
-//   motorInit();
-//   setSpdA1(targetSpd);
-//   setSpdA2(targetSpd);
-//   setSpdB1(targetSpd);
-//   setSpdB2(targetSpd);
+  motorInit();
+  setSpdA1(targetSpd);
+  setSpdA2(targetSpd);
+  setSpdB1(targetSpd);
+  setSpdB2(targetSpd);
 
-//  BTCtrl();
-//  Serial.println("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+//   BTCtrl();
+  Serial.println("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
   delay(500);
 
 }  
@@ -409,25 +410,474 @@ void loop()
   先使用路径规划pathPlan
   再命令电机移动directions
   */
-    // BTCtrl();
-    // delay(1000);
-//   pathPlan();
+    BTCtrl();
+    delay(1000);
+    pathPlan();
 //   Serial.println(currentStates);
   
-//   if (!ctrl_flag){
+  if (!ctrl_flag){
 
-//   pathPlan();
+  pathPlan();
     // currentStates = goBack;
     //   Serial.println(currentStates);
-//   directions();
-    // stateFix();
-
-//   }
+  directions();
+    stateFix();
+  }
 
 
 
   
 
+}
+
+
+
+
+
+//测试路径
+mission* test(){
+  mission demo[21];
+    //左直线模式
+  demo[0].A = true;
+  demo[0].B = false;
+  demo[0].C = false;
+  demo[0].D = true;
+  demo[0].E = false;
+  demo[0].M = false;
+  demo[0].M_1 = false;
+  demo[0].M_2 = false;
+  demo[0].M_3 = false;
+    //前
+  demo[2].A = false;
+  demo[2].B = false;
+  demo[2].C = false;
+  demo[2].D = false;
+  demo[2].E = false;
+  demo[2].M = false;
+  demo[2].M_1 = false;
+  demo[2].M_2 = false;
+  demo[2].M_3 = false;  
+
+      //前
+  demo[3].A = false;
+  demo[3].B = false;
+  demo[3].C = false;
+  demo[3].D = false;
+  demo[3].E = false;
+  demo[3].M = false;
+  demo[3].M_1 = false;
+  demo[3].M_2 = false;
+  demo[3].M_3 = false;  
+
+      //前
+  demo[4].A = false;
+  demo[4].B = false;
+  demo[4].C = false;
+  demo[4].D = false;
+  demo[4].E = false;
+  demo[4].M = false;
+  demo[4].M_1 = false;
+  demo[4].M_2 = false;
+  demo[4].M_3 = false;  
+
+      //前
+  demo[5].A = false;
+  demo[5].B = false;
+  demo[5].C = false;
+  demo[5].D = false;
+  demo[5].E = false;
+  demo[5].M = false;
+  demo[5].M_1 = false;
+  demo[5].M_2 = false;
+  demo[5].M_3 = false;  
+
+      //前
+  demo[6].A = false;
+  demo[6].B = false;
+  demo[6].C = false;
+  demo[6].D = false;
+  demo[6].E = false;
+  demo[6].M = false;
+  demo[6].M_1 = false;
+  demo[6].M_2 = false;
+  demo[6].M_3 = false;  
+
+      //前
+  demo[7].A = false;
+  demo[7].B = false;
+  demo[7].C = false;
+  demo[7].D = false;
+  demo[7].E = false;
+  demo[7].M = false;
+  demo[7].M_1 = false;
+  demo[7].M_2 = false;
+  demo[7].M_3 = false;  
+
+      //左
+  demo[8].A = true;
+  demo[8].B = false;
+  demo[8].C = false;
+  demo[8].D = false;
+  demo[8].E = false;
+  demo[8].M = false;
+  demo[8].M_1 = false;
+  demo[8].M_2 = false;
+  demo[8].M_3 = false;  
+
+        //左
+  demo[9].A = true;
+  demo[9].B = false;
+  demo[9].C = false;
+  demo[9].D = false;
+  demo[9].E = false;
+  demo[9].M = false;
+  demo[9].M_1 = false;
+  demo[9].M_2 = false;
+  demo[9].M_3 = false;  
+  
+        //左
+  demo[10].A = true;
+  demo[10].B = false;
+  demo[10].C = false;
+  demo[10].D = false;
+  demo[10].E = false;
+  demo[10].M = false;
+  demo[10].M_1 = false;
+  demo[10].M_2 = false;
+  demo[10].M_3 = false;  
+
+        //左
+  demo[11].A = true;
+  demo[11].B = false;
+  demo[11].C = false;
+  demo[11].D = false;
+  demo[11].E = false;
+  demo[11].M = false;
+  demo[11].M_1 = false;
+  demo[11].M_2 = false;
+  demo[11].M_3 = false;  
+
+        //左
+  demo[12].A = true;
+  demo[12].B = false;
+  demo[12].C = false;
+  demo[12].D = false;
+  demo[12].E = false;
+  demo[12].M = false;
+  demo[12].M_1 = false;
+  demo[12].M_2 = false;
+  demo[12].M_3 = false;  
+
+        //后
+  demo[13].A = false;
+  demo[13].B = true;
+  demo[13].C = false;
+  demo[13].D = false;
+  demo[13].E = false;
+  demo[13].M = false;
+  demo[13].M_1 = false;
+  demo[13].M_2 = false;
+  demo[13].M_3 = false; 
+
+        //后
+  demo[14].A = false;
+  demo[14].B = true;
+  demo[14].C = false;
+  demo[14].D = false;
+  demo[14].E = false;
+  demo[14].M = false;
+  demo[14].M_1 = false;
+  demo[14].M_2 = false;
+  demo[14].M_3 = false; 
+
+        //后
+  demo[15].A = false;
+  demo[15].B = true;
+  demo[15].C = false;
+  demo[15].D = false;
+  demo[15].E = false;
+  demo[15].M = false;
+  demo[15].M_1 = false;
+  demo[15].M_2 = false;
+  demo[15].M_3 = false; 
+
+     //右
+  demo[16].A = true;
+  demo[16].B = true;
+  demo[16].C = false;
+  demo[16].D = false;
+  demo[16].E = false;
+  demo[16].M = false;
+  demo[16].M_1 = false;
+  demo[16].M_2 = false;
+  demo[16].M_3 = false; 
+
+     //前
+  demo[17].A = false;
+  demo[17].B = true;
+  demo[17].C = false;
+  demo[17].D = false;
+  demo[17].E = false;
+  demo[17].M = false;
+  demo[17].M_1 = false;
+  demo[17].M_2 = false;
+  demo[17].M_3 = false; 
+
+     //右
+  demo[18].A = true;
+  demo[18].B = true;
+  demo[18].C = false;
+  demo[18].D = false;
+  demo[18].E = false;
+  demo[18].M = false;
+  demo[18].M_1 = false;
+  demo[18].M_2 = false;
+  demo[18].M_3 = false; 
+
+    //后
+  demo[19].A = false;
+  demo[19].B = true;
+  demo[19].C = false;
+  demo[19].D = false;
+  demo[19].E = false;
+  demo[19].M = false;
+  demo[19].M_1 = false;
+  demo[19].M_2 = false;
+  demo[19].M_3 = false; 
+
+
+     //右
+  demo[20].A = true;
+  demo[20].B = true;
+  demo[20].C = false;
+  demo[20].D = false;
+  demo[20].E = false;
+  demo[20].M = false;
+  demo[20].M_1 = false;
+  demo[20].M_2 = false;
+  demo[20].M_3 = false; 
+
+     //前
+  demo[21].A = false;
+  demo[21].B = true;
+  demo[21].C = false;
+  demo[21].D = false;
+  demo[21].E = false;
+  demo[21].M = false;
+  demo[21].M_1 = false;
+  demo[21].M_2 = false;
+  demo[21].M_3 = false; 
+
+     //右
+  demo[22].A = true;
+  demo[22].B = true;
+  demo[22].C = false;
+  demo[22].D = false;
+  demo[22].E = false;
+  demo[22].M = false;
+  demo[22].M_1 = false;
+  demo[22].M_2 = false;
+  demo[22].M_3 = false; 
+
+    //后
+  demo[23].A = false;
+  demo[23].B = true;
+  demo[23].C = false;
+  demo[23].D = false;
+  demo[23].E = false;
+  demo[23].M = false;
+  demo[23].M_1 = false;
+  demo[23].M_2 = false;
+  demo[23].M_3 = false; 
+
+     //右
+  demo[24].A = true;
+  demo[24].B = true;
+  demo[24].C = false;
+  demo[24].D = false;
+  demo[24].E = false;
+  demo[24].M = false;
+  demo[24].M_1 = false;
+  demo[24].M_2 = false;
+  demo[24].M_3 = false; 
+
+       //前
+  demo[25].A = false;
+  demo[25].B = false;
+  demo[25].C = false;
+  demo[25].D = false;
+  demo[25].E = false;
+  demo[25].M = false;
+  demo[25].M_1 = false;
+  demo[25].M_2 = false;
+  demo[25].M_3 = false; 
+
+       //前
+  demo[26].A = false;
+  demo[26].B = false;
+  demo[26].C = false;
+  demo[26].D = false;
+  demo[26].E = false;
+  demo[26].M = false;
+  demo[26].M_1 = false;
+  demo[26].M_2 = false;
+  demo[26].M_3 = false; 
+
+       //前
+  demo[27].A = false;
+  demo[27].B = false;
+  demo[27].C = false;
+  demo[27].D = false;
+  demo[27].E = false;
+  demo[27].M = false;
+  demo[27].M_1 = false;
+  demo[27].M_2 = false;
+  demo[27].M_3 = false; 
+
+
+
+      //左
+  demo[28].A = true;
+  demo[28].B = false;
+  demo[28].C = false;
+  demo[28].D = false;
+  demo[28].E = false;
+  demo[28].M = false;
+  demo[28].M_1 = false;
+  demo[28].M_2 = false;
+  demo[28].M_3 = false;  
+
+        //左
+  demo[29].A = true;
+  demo[29].B = false;
+  demo[29].C = false;
+  demo[29].D = false;
+  demo[29].E = false;
+  demo[29].M = false;
+  demo[29].M_1 = false;
+  demo[29].M_2 = false;
+  demo[29].M_3 = false;  
+  
+        //左
+  demo[30].A = true;
+  demo[30].B = false;
+  demo[30].C = false;
+  demo[30].D = false;
+  demo[30].E = false;
+  demo[30].M = false;
+  demo[30].M_1 = false;
+  demo[30].M_2 = false;
+  demo[30].M_3 = false;  
+
+        //左
+  demo[31].A = true;
+  demo[31].B = false;
+  demo[31].C = false;
+  demo[31].D = false;
+  demo[31].E = false;
+  demo[31].M = false;
+  demo[31].M_1 = false;
+  demo[31].M_2 = false;
+  demo[31].M_3 = false;  
+
+        //左
+  demo[32].A = true;
+  demo[32].B = false;
+  demo[32].C = false;
+  demo[32].D = false;
+  demo[32].E = false;
+  demo[32].M = false;
+  demo[32].M_1 = false;
+  demo[32].M_2 = false;
+  demo[32].M_3 = false;  
+
+    //后
+  demo[33].A = false;
+  demo[33].B = true;
+  demo[33].C = false;
+  demo[33].D = false;
+  demo[33].E = false;
+  demo[33].M = false;
+  demo[33].M_1 = false;
+  demo[33].M_2 = false;
+  demo[33].M_3 = false; 
+
+
+    //后
+  demo[34].A = false;
+  demo[34].B = true;
+  demo[34].C = false;
+  demo[34].D = false;
+  demo[34].E = false;
+  demo[34].M = false;
+  demo[34].M_1 = false;
+  demo[34].M_2 = false;
+  demo[34].M_3 = false; 
+
+    //后
+  demo[35].A = false;
+  demo[35].B = true;
+  demo[35].C = false;
+  demo[35].D = false;
+  demo[35].E = false;
+  demo[35].M = false;
+  demo[35].M_1 = false;
+  demo[35].M_2 = false;
+  demo[35].M_3 = false; 
+
+      //后
+  demo[36].A = false;
+  demo[36].B = true;
+  demo[36].C = false;
+  demo[36].D = false;
+  demo[36].E = false;
+  demo[36].M = false;
+  demo[36].M_1 = false;
+  demo[36].M_2 = false;
+  demo[36].M_3 = false; 
+
+      //后
+  demo[37].A = false;
+  demo[37].B = true;
+  demo[37].C = false;
+  demo[37].D = false;
+  demo[37].E = false;
+  demo[37].M = false;
+  demo[37].M_1 = false;
+  demo[37].M_2 = false;
+  demo[37].M_3 = false; 
+
+      //后
+  demo[38].A = false;
+  demo[38].B = true;
+  demo[38].C = false;
+  demo[38].D = false;
+  demo[38].E = false;
+  demo[38].M = false;
+  demo[38].M_1 = false;
+  demo[38].M_2 = false;
+  demo[38].M_3 = false; 
+
+      //stp
+  demo[39].A = false;
+  demo[39].B = false;
+  demo[39].C = true;
+  demo[39].D = false;
+  demo[39].E = false;
+  demo[39].M = false;
+  demo[39].M_1 = false;
+  demo[39].M_2 = false;
+  demo[39].M_3 = false; 
+
+
+
+
+
+
+
+
+  return createMissionList(40,demo);
+  
 }
 //蓝牙控制
 void BTCtrl(){
@@ -1834,7 +2284,9 @@ void pathPlan()
             reqs("#B$","#Bb$");
             //请求完成后有4种情况:抓取当请求扫描下一个 抓取当前并得到规划 请求下一个并得到规划
             //如果第二次没有规划,抓取第三个
-            //抓取当前,该值为1
+
+            //抓取当前, UART_DELTA[0] UART_DELTA[1] UART_DELTA[2]=1
+
             if (UART_DELTA[2]){
 
                 //如果没有规划
@@ -2114,15 +2566,98 @@ void dynamicGrabPlan(){
                     mp->next->next->next->next->next = NULL;
 
 
-
-
                 }
 
 
+                //310
+                if (UART_PLAN[1] == 1){
+
+                    mp->next = (mission*)malloc(sizeof(mission));
+                    //前
+                    mp->next->A = false;
+                    mp->next->B = false;
+                    mp->next->C = false;
+                    mp->next->D = false;
+                    mp->next->E = false;
+                    mp->next->M = false;
+                    mp->next->M_1 = false;
+                    mp->next->M_2 = false;
+                    mp->next->M_3 = false;
+
+                    mp->next->next = (mission*)malloc(sizeof(mission));
+
+                    //STOP-REQ-Grab
+                    mp->next->next->A = false;
+                    mp->next->next->B = false;
+                    mp->next->next->C = true;
+                    mp->next->next->D = false;
+                    mp->next->next->E = false;
+                    mp->next->next->M = true;
+                    mp->next->next->M_1 = false;
+                    mp->next->next->M_2 = false;
+                    mp->next->next->M_3 = true;
+
+                    mp->next->next->next = (mission*)malloc(sizeof(mission));
+
+                    //Back
+                    mp->next->next->next->A = true;
+                    mp->next->next->next->B = true;
+                    mp->next->next->next->C = false;
+                    mp->next->next->next->D = false;
+                    mp->next->next->next->E = false;
+                    mp->next->next->next->M = false;
+                    mp->next->next->next->M_1 = false;
+                    mp->next->next->next->M_2 = false;
+                    mp->next->next->next->M_3 = false;
+
+                    mp->next->next->next->next = (mission*)malloc(sizeof(mission));
+
+                    //STOP-REQ-Grab
+                    mp->next->next->next->next->A = false;
+                    mp->next->next->next->next->B = false;
+                    mp->next->next->next->next->C = true;
+                    mp->next->next->next->next->D = false;
+                    mp->next->next->next->next->E = false;
+                    mp->next->next->next->next->M = false;
+                    mp->next->next->next->next->M_1 = false;
+                    mp->next->next->next->next->M_2 = false;
+                    mp->next->next->next->next->M_3 = true;
+
+                    mp->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+
+                    //前
+                    mp->next->next->next->next->next->A = false;
+                    mp->next->next->next->next->next->B = false;
+                    mp->next->next->next->next->next->C = false;
+                    mp->next->next->next->next->next->D = false;
+                    mp->next->next->next->next->next->E = false;
+                    mp->next->next->next->next->next->M = false;
+                    mp->next->next->next->next->next->M_1 = false;
+                    mp->next->next->next->next->next->M_2 = false;
+                    mp->next->next->next->next->next->M_3 = false;
 
 
+
+                    mp->next->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+
+                    //前(复位到方格,准备进行物料放置)
+                    mp->next->next->next->next->next->next->A = false;
+                    mp->next->next->next->next->next->next->B = false;
+                    mp->next->next->next->next->next->next->C = false;
+                    mp->next->next->next->next->next->next->D = false;
+                    mp->next->next->next->next->next->next->E = false;
+                    mp->next->next->next->next->next->next->M = false;
+                    mp->next->next->next->next->next->next->M_1 = false;
+                    mp->next->next->next->next->next->next->M_2 = false;
+                    mp->next->next->next->next->next->next->M_3 = false;
+
+                    mp->next->next->next->next->next->next = NULL;
+
+                }
 
             }
+
+        }
 
 
 
@@ -2132,86 +2667,84 @@ void dynamicGrabPlan(){
 
 
             //130
-            else{
-                mission* p = NULL;
-                
-                p = (mission*)malloc(sizeof(mission));
+    else{
+        mission* p = NULL;
+        
+        p = (mission*)malloc(sizeof(mission));
 
-                mp->next = p;
-                //后
-                p->A = false;
-                p->B = true;
-                p->C = false;
-                p->D = false;
-                p->E = false;
-                p->M = false;
-                p->M_1 = false;
-                p->M_2 = false;
-                p->M_3 = false;
+        mp->next = p;
+        //后
+        p->A = false;
+        p->B = true;
+        p->C = false;
+        p->D = false;
+        p->E = false;
+        p->M = false;
+        p->M_1 = false;
+        p->M_2 = false;
+        p->M_3 = false;
 
-                p->next = (mission*)malloc(sizeof(mission));
-                //STOP-REQ-Grab
-                p->next->A = false;
-                p->next->B = false;
-                p->next->C = true;
-                p->next->D = false;
-                p->next->E = false;
-                p->next->M = true;
-                p->next->M_1 = false;
-                p->next->M_2 = false;
-                p->next->M_3 = true;
+        p->next = (mission*)malloc(sizeof(mission));
+        //STOP-REQ-Grab
+        p->next->A = false;
+        p->next->B = false;
+        p->next->C = true;
+        p->next->D = false;
+        p->next->E = false;
+        p->next->M = true;
+        p->next->M_1 = false;
+        p->next->M_2 = false;
+        p->next->M_3 = true;
 
-                p->next->next = (mission*)malloc(sizeof(mission));
-                
-                //前
-                p->next->next->A = false;
-                p->next->next->B = false;
-                p->next->next->C = false;
-                p->next->next->D = false;
-                p->next->next->E = false;
-                p->next->next->M = false;
-                p->next->next->M_1 = false;
-                p->next->next->M_2 = false;
-                p->next->next->M_3 = false;
+        p->next->next = (mission*)malloc(sizeof(mission));
+        
+        //前
+        p->next->next->A = false;
+        p->next->next->B = false;
+        p->next->next->C = false;
+        p->next->next->D = false;
+        p->next->next->E = false;
+        p->next->next->M = false;
+        p->next->next->M_1 = false;
+        p->next->next->M_2 = false;
+        p->next->next->M_3 = false;
 
-                p->next->next->next = (mission*)malloc(sizeof(mission));
-                //前
-                p->next->next->next->A = false;
-                p->next->next->next->B = false;
-                p->next->next->next->C = false;
-                p->next->next->next->D = false;
-                p->next->next->next->E = false;
-                p->next->next-next->>M = false;
-                p->next->next->next->M_1 = false;
-                p->next->next->next->M_2 = false;
-                p->next->next->next->M_3 = false;
+        p->next->next->next = (mission*)malloc(sizeof(mission));
+        //前
+        p->next->next->next->A = false;
+        p->next->next->next->B = false;
+        p->next->next->next->C = false;
+        p->next->next->next->D = false;
+        p->next->next->next->E = false;
+        p->next->next->next->M = false;
+        p->next->next->next->M_1 = false;
+        p->next->next->next->M_2 = false;
+        p->next->next->next->M_3 = false;
 
-                p->next->next->next->next = (mission*)malloc(sizeof(mission));
+        p->next->next->next->next = (mission*)malloc(sizeof(mission));
 
-                //STOP-REQ-Grab
-                p->next->next->next->next->A = false;
-                p->next->next->next->next->B = false;
-                p->next->next->next->next->C = true;
-                p->next->next->next->next->D = false;
-                p->next->next->next->next->E = false;
-                p->next->next-next->next->M = true;
-                p->next->next->next->next->M_1 = false;
-                p->next->next->next->next->M_2 = false;
-                p->next->next->next->next->M_3 = true;
+        //STOP-REQ-Grab
+        p->next->next->next->next->A = false;
+        p->next->next->next->next->B = false;
+        p->next->next->next->next->C = true;
+        p->next->next->next->next->D = false;
+        p->next->next->next->next->E = false;
+        p->next->next->next->next->M = true;
+        p->next->next->next->next->M_1 = false;
+        p->next->next->next->next->M_2 = false;
+        p->next->next->next->next->M_3 = true;
 
-                p->next->next->next->next->next = NULL;
+        p->next->next->next->next->next = NULL;
 
-
-
-
-
-            }
         }
+
+        
     }
 
     //规划无效
     else{
         //直接动态规划抓取第三个
+        
     }
 
     
@@ -3266,6 +3799,7 @@ bool decodes(){
         }
         //          b$(扫描下一个)             b@&(+/-)xx&(+/-)yy$(抓取当前)            b&(+/-)xx&(+/-)yy&xxx$(抓取当前并规划)
         else if (UART_DATABUF[i] == UART_DECODE[1]){
+            
             //扫描下一个 36 '$'
             if (UART_DATABUF[i+1] == 36){
                 //切换状态,车辆移动至下一格子
@@ -3612,7 +4146,6 @@ float spdController_A1(float ActualValue, short Mode)
   
   return PIDInc;
 }
-
 float spdController_A2(float ActualValue, short Mode)
 {
 
