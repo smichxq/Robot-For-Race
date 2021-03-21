@@ -233,6 +233,8 @@ int UART_TARGET[6];//任务码
 
 int UART_DELTA[3]={0,0,0};//当前误差
 
+int UART_DELTA_VALUE[3];
+
 byte UART_PLAN[3]={0,0,0};//规划
 /*===================================================UART===================================================*/
 
@@ -430,13 +432,153 @@ void loop()
 
 }
 
+/*
+* 处理误差转化为移动数据
+*/
+void UART_DELTA_PROC(double x,double y){
+
+    double L1 = 20.0;
+    double L2 = 20.0;
+    double L3;
+
+    double Ang1,Ang2,Ang3;
+    double Ang_a;
+    double Anga;
+    double Ang__1,Ang__2,Ang__3;
+    double A,B,C,D,E;
+
+    if (L1 + L2 < pow(pow(x,2) + pow(y,2),0.5)){
+        //无法到达
+        printf("无法到达");
+        return;
+    }
+
+    if (!x){
+        L3 = y;
+    }
+    
+    else{
+        L3 = pow(pow(x,2) + pow(y,2),0.5);
+    }
+
+    A = pow(L1,2);
+    B = pow(L2,2);
+    C = pow(L3,2);
+    D = (2.0*L1*L2);
+    E = A + B - C / D;
+    Ang2 = acos((pow(L1,2) + pow(L2,2) - pow(L3,2)) / (2.0*L1*L2));
+
+    Ang2 = round(Ang2*180/PI);
+
+    Ang_a = acos((pow(L1,2)  +pow(L3,2) - pow(L2,2)) / (2*L1*L3));
+
+    Ang_a = Ang_a * 180 / PI;
+
+    if (!x){
+        Anga = 90;
+    }
+
+    else{
+        Anga = atan(y/x) * 180 / PI;
+    }
+
+    if (!x){
+        Ang1 = Ang_a + Anga;
+    }
+
+    else if (x > 0){
+        Ang1 = Ang_a + Anga;
+    }
+
+    else if (x < 0){
+        if (y > 0){
+            Ang1 = Ang_a + 180 + Anga;
+        }
+        else if (y < 0){
+            //Error place
+            printf("Error place");
+            return;
+        }
+    }
+
+    Ang1 = round(Ang1);
+
+    Ang3 = round(360-Ang1-Ang2);
+
+    Ang__1 = round(100.0 / 9.0 * (Ang1 + 45.0));
+
+    Ang__2 = round(200.0 / 27.0 * (382.5 - Ang2));
+
+    Ang__3 = round(100.0 / 9.0 * (315.0 - Ang3));
+
+    if (Ang__1 > 2000){
+            if (Anga < 0){
+        Ang1 = 180 + Anga - Ang_a;
+    }
+        else{
+        Ang1 = Anga - Ang_a;
+    }
+        Ang1 = round(Ang1);
+
+    Ang3 = round(Ang3 - 2.0 * (180 - Ang_a - Ang2));
+
+    Ang2 = round(360-Ang2);
+
+    Ang__1 = round(100.0 / 9.0 * (Ang1 + 45.0));
+    
+    Ang__2 = round(200.0 / 27.0 * (382.5 - Ang2));
+
+    Ang__3 = round(100.0 / 9.0 * (315.0 - Ang3));
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+    if (Ang__1 < 500 || Ang__2 < 500 || Ang__3 < 500 || Ang__1 > 2500 || Ang__2 > 2500|| Ang__3 > 2500){
+        //无法到达
+        printf("无法到达");
+        return;
+    } 
+
+    else{
+
+    }
+
+    UART_DELTA_VALUE[0] = Ang__1;
+    UART_DELTA_VALUE[1] = Ang__2;
+    UART_DELTA_VALUE[2] = Ang__3;
+
+
+    // int* p = NULL;
+
+    // p = (int*)malloc(sizeof(3 * int));
+    // *p = Ang__1;
+    // p++;
+    // *p = Ang__2;
+    // p++;
+    // *p = Ang__3;
+
+
+
+}
+
 
 
 
 
 //测试路径
 mission* test(){
-  mission demo[21];
+  mission demo[39];
     //左直线模式
   demo[0].A = true;
   demo[0].B = false;
@@ -448,6 +590,17 @@ mission* test(){
   demo[0].M_2 = false;
   demo[0].M_3 = false;
     //前
+  demo[1].A = false;
+  demo[1].B = false;
+  demo[1].C = false;
+  demo[1].D = false;
+  demo[1].E = false;
+  demo[1].M = false;
+  demo[1].M_1 = false;
+  demo[1].M_2 = false;
+  demo[1].M_3 = false;  
+
+      //前
   demo[2].A = false;
   demo[2].B = false;
   demo[2].C = false;
@@ -467,8 +620,7 @@ mission* test(){
   demo[3].M = false;
   demo[3].M_1 = false;
   demo[3].M_2 = false;
-  demo[3].M_3 = false;  
-
+  demo[3].M_3 = false;
       //前
   demo[4].A = false;
   demo[4].B = false;
@@ -479,7 +631,6 @@ mission* test(){
   demo[4].M_1 = false;
   demo[4].M_2 = false;
   demo[4].M_3 = false;  
-
       //前
   demo[5].A = false;
   demo[5].B = false;
@@ -489,8 +640,7 @@ mission* test(){
   demo[5].M = false;
   demo[5].M_1 = false;
   demo[5].M_2 = false;
-  demo[5].M_3 = false;  
-
+  demo[5].M_3 = false;
       //前
   demo[6].A = false;
   demo[6].B = false;
@@ -500,10 +650,9 @@ mission* test(){
   demo[6].M = false;
   demo[6].M_1 = false;
   demo[6].M_2 = false;
-  demo[6].M_3 = false;  
-
-      //前
-  demo[7].A = false;
+  demo[6].M_3 = false; 
+      //左
+  demo[7].A = true;
   demo[7].B = false;
   demo[7].C = false;
   demo[7].D = false;
@@ -513,7 +662,7 @@ mission* test(){
   demo[7].M_2 = false;
   demo[7].M_3 = false;  
 
-      //左
+        //左
   demo[8].A = true;
   demo[8].B = false;
   demo[8].C = false;
@@ -534,7 +683,7 @@ mission* test(){
   demo[9].M_1 = false;
   demo[9].M_2 = false;
   demo[9].M_3 = false;  
-  
+
         //左
   demo[10].A = true;
   demo[10].B = false;
@@ -557,16 +706,16 @@ mission* test(){
   demo[11].M_2 = false;
   demo[11].M_3 = false;  
 
-        //左
-  demo[12].A = true;
-  demo[12].B = false;
+        //后
+  demo[12].A = false;
+  demo[12].B = true;
   demo[12].C = false;
   demo[12].D = false;
   demo[12].E = false;
   demo[12].M = false;
   demo[12].M_1 = false;
   demo[12].M_2 = false;
-  demo[12].M_3 = false;  
+  demo[12].M_3 = false; 
 
         //后
   demo[13].A = false;
@@ -590,8 +739,8 @@ mission* test(){
   demo[14].M_2 = false;
   demo[14].M_3 = false; 
 
-        //后
-  demo[15].A = false;
+     //右
+  demo[15].A = true;
   demo[15].B = true;
   demo[15].C = false;
   demo[15].D = false;
@@ -601,8 +750,8 @@ mission* test(){
   demo[15].M_2 = false;
   demo[15].M_3 = false; 
 
-     //右
-  demo[16].A = true;
+     //前
+  demo[16].A = false;
   demo[16].B = true;
   demo[16].C = false;
   demo[16].D = false;
@@ -610,10 +759,9 @@ mission* test(){
   demo[16].M = false;
   demo[16].M_1 = false;
   demo[16].M_2 = false;
-  demo[16].M_3 = false; 
-
-     //前
-  demo[17].A = false;
+  demo[16].M_3 = false;
+     //右
+  demo[17].A = true;
   demo[17].B = true;
   demo[17].C = false;
   demo[17].D = false;
@@ -622,9 +770,8 @@ mission* test(){
   demo[17].M_1 = false;
   demo[17].M_2 = false;
   demo[17].M_3 = false; 
-
-     //右
-  demo[18].A = true;
+    //后
+  demo[18].A = false;
   demo[18].B = true;
   demo[18].C = false;
   demo[18].D = false;
@@ -634,8 +781,8 @@ mission* test(){
   demo[18].M_2 = false;
   demo[18].M_3 = false; 
 
-    //后
-  demo[19].A = false;
+     //右
+  demo[19].A = true;
   demo[19].B = true;
   demo[19].C = false;
   demo[19].D = false;
@@ -645,9 +792,8 @@ mission* test(){
   demo[19].M_2 = false;
   demo[19].M_3 = false; 
 
-
-     //右
-  demo[20].A = true;
+     //前
+  demo[20].A = false;
   demo[20].B = true;
   demo[20].C = false;
   demo[20].D = false;
@@ -657,8 +803,8 @@ mission* test(){
   demo[20].M_2 = false;
   demo[20].M_3 = false; 
 
-     //前
-  demo[21].A = false;
+     //右
+  demo[21].A = true;
   demo[21].B = true;
   demo[21].C = false;
   demo[21].D = false;
@@ -668,8 +814,8 @@ mission* test(){
   demo[21].M_2 = false;
   demo[21].M_3 = false; 
 
-     //右
-  demo[22].A = true;
+    //后
+  demo[22].A = false;
   demo[22].B = true;
   demo[22].C = false;
   demo[22].D = false;
@@ -679,8 +825,8 @@ mission* test(){
   demo[22].M_2 = false;
   demo[22].M_3 = false; 
 
-    //后
-  demo[23].A = false;
+     //右
+  demo[23].A = true;
   demo[23].B = true;
   demo[23].C = false;
   demo[23].D = false;
@@ -690,9 +836,9 @@ mission* test(){
   demo[23].M_2 = false;
   demo[23].M_3 = false; 
 
-     //右
-  demo[24].A = true;
-  demo[24].B = true;
+       //前
+  demo[24].A = false;
+  demo[24].B = false;
   demo[24].C = false;
   demo[24].D = false;
   demo[24].E = false;
@@ -723,8 +869,10 @@ mission* test(){
   demo[26].M_2 = false;
   demo[26].M_3 = false; 
 
-       //前
-  demo[27].A = false;
+
+
+      //左
+  demo[27].A = true;
   demo[27].B = false;
   demo[27].C = false;
   demo[27].D = false;
@@ -732,11 +880,9 @@ mission* test(){
   demo[27].M = false;
   demo[27].M_1 = false;
   demo[27].M_2 = false;
-  demo[27].M_3 = false; 
+  demo[27].M_3 = false;  
 
-
-
-      //左
+        //左
   demo[28].A = true;
   demo[28].B = false;
   demo[28].C = false;
@@ -746,7 +892,7 @@ mission* test(){
   demo[28].M_1 = false;
   demo[28].M_2 = false;
   demo[28].M_3 = false;  
-
+  
         //左
   demo[29].A = true;
   demo[29].B = false;
@@ -757,7 +903,7 @@ mission* test(){
   demo[29].M_1 = false;
   demo[29].M_2 = false;
   demo[29].M_3 = false;  
-  
+
         //左
   demo[30].A = true;
   demo[30].B = false;
@@ -780,16 +926,17 @@ mission* test(){
   demo[31].M_2 = false;
   demo[31].M_3 = false;  
 
-        //左
-  demo[32].A = true;
-  demo[32].B = false;
+    //后
+  demo[32].A = false;
+  demo[32].B = true;
   demo[32].C = false;
   demo[32].D = false;
   demo[32].E = false;
   demo[32].M = false;
   demo[32].M_1 = false;
   demo[32].M_2 = false;
-  demo[32].M_3 = false;  
+  demo[32].M_3 = false; 
+
 
     //后
   demo[33].A = false;
@@ -802,7 +949,6 @@ mission* test(){
   demo[33].M_2 = false;
   demo[33].M_3 = false; 
 
-
     //后
   demo[34].A = false;
   demo[34].B = true;
@@ -814,7 +960,7 @@ mission* test(){
   demo[34].M_2 = false;
   demo[34].M_3 = false; 
 
-    //后
+      //后
   demo[35].A = false;
   demo[35].B = true;
   demo[35].C = false;
@@ -847,10 +993,10 @@ mission* test(){
   demo[37].M_2 = false;
   demo[37].M_3 = false; 
 
-      //后
+      //stp
   demo[38].A = false;
-  demo[38].B = true;
-  demo[38].C = false;
+  demo[38].B = false;
+  demo[38].C = true;
   demo[38].D = false;
   demo[38].E = false;
   demo[38].M = false;
@@ -858,16 +1004,6 @@ mission* test(){
   demo[38].M_2 = false;
   demo[38].M_3 = false; 
 
-      //stp
-  demo[39].A = false;
-  demo[39].B = false;
-  demo[39].C = true;
-  demo[39].D = false;
-  demo[39].E = false;
-  demo[39].M = false;
-  demo[39].M_1 = false;
-  demo[39].M_2 = false;
-  demo[39].M_3 = false; 
 
 
 
@@ -875,8 +1011,7 @@ mission* test(){
 
 
 
-
-  return createMissionList(40,demo);
+  return createMissionList(39,demo);
   
 }
 //蓝牙控制
@@ -3939,7 +4074,7 @@ void decode_b(int i){
         i++;
 
         //数据结尾退出 $==36
-        if (UART_DATABUF == 36){
+        if (UART_DATABUF[i] == 36){
             return;
         }
 
