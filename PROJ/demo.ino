@@ -1252,29 +1252,30 @@ void motorA1(){
       if (ctrlFlag){
 
         //左移A1
-        if (currentStates == Left && ctrlFlag){
+        if ((currentStates == Left || currentStates == micro_line_L) && ctrlFlag){
             analogWrite(MotorPin1,spdA1 + Left_FixA1);
-            // Serial.println(spdA1 + Left_FixA1);
+//             Serial.println(spdA1 + Left_FixA1);
 
         }
         //右移A1
-        if (currentStates == Right && ctrlFlag){
+        if ((currentStates == Right || currentStates == micro_line_R) && ctrlFlag){
             analogWrite(MotorPin1,spdA1 + Right_FixA1);
 
         }
-
-        if(currentStates == goStraight && ctrlFlag){
+        //前
+        if((currentStates == goStraight || currentStates == micro_line_F) && ctrlFlag){
             analogWrite(MotorPin1,spdA1 + Go_FixA1);
         }
-
+        //后
         if ((currentStates == goBack || currentStates == micro_line_B) && ctrlFlag){
             analogWrite(MotorPin1,spdA1 + Back_FixA1);
         }
-
+        //stp
         if (currentStates == stp && ctrlFlag){
             analogWrite(MotorPin1,spdA1);
         }
       }
+
       else{
         analogWrite(MotorPin1,spdA1);
       }
@@ -1297,21 +1298,21 @@ void motorA2(){
       if (ctrlFlag){
 
         //左移A2
-        if (currentStates == Left && ctrlFlag){
+        if ((currentStates == Left || currentStates == micro_line_L) && ctrlFlag){
             analogWrite(MotorPin2,spdA2 + Left_FixA2);
-            // Serial.println(spdA2 + Left_FixA2);
+//             Serial.println(spdA2 + Left_FixA2);
 
         }
         //右移A2
-        if (currentStates == Right && ctrlFlag){
+        if ((currentStates == Right || currentStates == micro_line_R) && ctrlFlag){
             analogWrite(MotorPin2,spdA2 + Right_FixA2);
         }
 
-        if (currentStates == goStraight && ctrlFlag){
+        if ((currentStates == goStraight || currentStates == micro_line_F) && ctrlFlag){
             analogWrite(MotorPin2,spdA2 + Go_FixA2);
         }
 
-        if ((currentStates == goBack|| currentStates == micro_line_B)  && ctrlFlag){
+        if ((currentStates == goBack || currentStates == micro_line_B)  && ctrlFlag){
             analogWrite(MotorPin2,spdA2 + Back_FixA2);
         }
 
@@ -1342,17 +1343,17 @@ void motorB1(){
   {
       if (ctrlFlag){
         //左移B1
-        if (currentStates == Left && ctrlFlag){
+        if ((currentStates == Left || currentStates == micro_line_L) && ctrlFlag){
             analogWrite(MotorPin3,spdB1 + Left_FixB1);
-            // Serial.println(spdB1 + Left_FixB1);
+//             Serial.println(spdB1 + Left_FixB1);
 
         }
 
         //右移B1
-        if (currentStates == Right && ctrlFlag){
+        if ((currentStates == Right || currentStates == micro_line_R) && ctrlFlag){
             analogWrite(MotorPin3,spdB1 + Right_FixB1);
         }
-        if (currentStates == goStraight && ctrlFlag){
+        if ((currentStates == goStraight || currentStates == micro_line_F) && ctrlFlag){
             analogWrite(MotorPin3,spdB1 + Go_FixB1);
         }
 
@@ -1384,18 +1385,18 @@ void motorB2(){
   {
       if (ctrlFlag){
         //左移B2
-        if (currentStates == Left && ctrlFlag){
+        if ((currentStates == Left || currentStates == micro_line_L) && ctrlFlag){
             analogWrite(MotorPin4,spdB2 + Left_FixB2);
-            // Serial.println(spdB2 + Left_FixB2);
+//             Serial.println(spdB2 + Left_FixB2);
 
         }
 
         //右移B2
-        if (currentStates == Right && ctrlFlag){
+        if ((currentStates == Right || currentStates == micro_line_R) && ctrlFlag){
             analogWrite(MotorPin4,spdB2 + Right_FixB2);
         }
         //前进
-        if (currentStates == goStraight && ctrlFlag){
+        if ((currentStates == goStraight || currentStates == micro_line_F) && ctrlFlag){
             analogWrite(MotorPin4,spdB2 + Go_FixB2);
         }
 
@@ -1467,10 +1468,6 @@ void directions(){
         //printf("goStraight\n");
         while (true){
             Sensor_F_M = digitalRead(SensorPinF_2);
-            setSpdA1(40);
-            setSpdA2(40);
-            setSpdB1(40);
-            setSpdB2(40);
 
             motorA1PNS(P);
             motorB1PNS(P);
@@ -1519,10 +1516,7 @@ void directions(){
         while (true){
             // Serial.println("!!!!!!!!!!!!!!!1");
             Sensor_B_M = digitalRead(SensorPinB_2);
-            setSpdA1(45);
-            setSpdA2(45);
-            setSpdB1(45);
-            setSpdB2(45);
+
 
             motorA1PNS(N);
             motorA2PNS(N);
@@ -1540,22 +1534,12 @@ void directions(){
             motorB2();
             //压线
             if (!Sensor_B_M){
-                motorA1PNS(P);
-                motorA2PNS(P);
-                motorB1PNS(P);
-                motorB2PNS(P);
-                motorA1();
+                // motorA1PNS(P);
+                // motorA2PNS(P);
+                // motorB1PNS(P);
+                // motorB2PNS(P);
 
-                
-                motorA2();
-
-                
-                motorB1();
-
-                
-                motorB2();
-
-                delay(20);
+                // delay(20);
                 motorA1PNS(S);
                 motorA2PNS(S);
                 motorB1PNS(S);
@@ -1587,21 +1571,33 @@ void directions(){
         break;
      case micro_line_L:
         //printf("goStraight\n");
-   
-        motorA1PNS(N);
-        motorA2PNS(P);
-        motorB1PNS(P);
-        motorB2PNS(N);
-        motorA1();
+        while(true){
+            Sensor_L_M = digitalRead(SensorPinL_2);
 
-        
-        motorA2();
+            motorA1PNS(N);
+            motorA2PNS(P);
+            motorB1PNS(P);
+            motorB2PNS(N);
 
-        
-        motorB1();
+            motorA1();
 
-        
-        motorB2();
+            
+            motorA2();
+
+            
+            motorB1();
+
+            
+            motorB2();
+
+            if(!Sensor_L_M){
+                motorA1PNS(S);
+                motorA2PNS(S);
+                motorB1PNS(S);
+                motorB2PNS(S);
+                break;
+            }
+        }
         
         break;
         
@@ -1629,20 +1625,36 @@ void directions(){
         break;
    case micro_line_R:
         //printf("goStraight\n");
-        motorA1PNS(P);
-        motorA2PNS(N);
-        motorB1PNS(N);
-        motorB2PNS(P);
-        motorA1();
 
-       
-        motorA2();
+        while (true)
+        {
+            Sensor_R_M = digitalRead(SensorPinR_2);
+        
+        
+            motorA1PNS(P);
+            motorA2PNS(N);
+            motorB1PNS(N);
+            motorB2PNS(P);
+            motorA1();
 
         
-        motorB1();
+            motorA2();
 
-        
-        motorB2();
+            
+            motorB1();
+
+            
+            motorB2();
+
+            if(!Sensor_R_M){
+                motorA1PNS(S);
+                motorA2PNS(S);
+                motorB1PNS(S);
+                motorB2PNS(S);
+                break;
+
+            }
+        }
         
         break;
 
@@ -1661,6 +1673,7 @@ void directions(){
     }
   
 }
+
 
 
 
