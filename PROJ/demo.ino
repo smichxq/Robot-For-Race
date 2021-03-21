@@ -1814,37 +1814,10 @@ void directions(){
 
 //到达位置抓取动作
 void ctrl_grab_servo(){
-    int x;
-    
-    switch (UART_DELTA[0])
-    {
-    case 0:
-        x = 1500;
-        break;
-    case -10:
-        x = 1520;
-        break;
-
-    case 10:
-        x = 1485;
-        break;
-    case -20:
-        x = 1530;
-        break;
-    case 20:
-        x = 1477;
-        break;
-    case -30:
-        x = 1540;
-        break;
-    case 30:
-        x = 1450;
-        break;
-    default:
-        x = 1500;
-        break;
-    }
-
+    //处理接收到的x，y
+    UART_DELTA_PROC(UART_DELTA[0],UART_DELTA[1]);
+    //计算后输出 UART_DELTA_VALUE[0,1,2],对应 3，4，5
+    //控制机械臂移动
     LobotServo servos[5];   //舵机ID位置结构数组
     servos[0].ID = 2;       //2号舵机
     servos[0].Position = 896;  //1400位置
