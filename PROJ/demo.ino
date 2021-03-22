@@ -433,9 +433,12 @@ void loop()
 }
 
 /*
-* 处理误差转化为移动数据
+* 处理误差转化为移动数据(垂直面移动)
+* 参数1：y(图像误差)+x(待测固定值)
+* 参数2：实际测试后为定值
+* 输出：UART_DELTA_VALUE[3] 舵机移动参数
 */
-void UART_DELTA_PROC(double x,double y){
+void UART_DELTA_PROC(double x,double h){
 
     double L1 = 20.0;
     double L2 = 20.0;
@@ -445,30 +448,30 @@ void UART_DELTA_PROC(double x,double y){
     double Ang_a;
     double Anga;
     double Ang__1,Ang__2,Ang__3;
-    double A,B,C,D,E;
+    // double A,B,C,D,E;
 
-    if (L1 + L2 < pow(pow(x,2) + pow(y,2),0.5)){
+    if (L1 + L2 < pow(pow(x,2) + pow(h,2),0.5)){
         //无法到达
-        printf("无法到达");
+        // printf("无法到达");
         return;
     }
 
     if (!x){
-        L3 = y;
+        L3 = h;
     }
     
     else{
-        L3 = pow(pow(x,2) + pow(y,2),0.5);
+        L3 = pow(pow(x,2) + pow(h,2),0.5);
     }
 
-    A = pow(L1,2);
-    B = pow(L2,2);
-    C = pow(L3,2);
-    D = (2.0*L1*L2);
-    E = A + B - C / D;
+    // A = pow(L1,2);
+    // B = pow(L2,2);
+    // C = pow(L3,2);
+    // D = (2.0*L1*L2);
+    // E = A + B - C / D;
     Ang2 = acos((pow(L1,2) + pow(L2,2) - pow(L3,2)) / (2.0*L1*L2));
 
-    Ang2 = round(Ang2*180/PI);
+    Ang2 = Ang2*180/PI;
 
     Ang_a = acos((pow(L1,2)  +pow(L3,2) - pow(L2,2)) / (2*L1*L3));
 
@@ -479,7 +482,7 @@ void UART_DELTA_PROC(double x,double y){
     }
 
     else{
-        Anga = atan(y/x) * 180 / PI;
+        Anga = atan(h/x) * 180 / PI;
     }
 
     if (!x){
@@ -491,25 +494,25 @@ void UART_DELTA_PROC(double x,double y){
     }
 
     else if (x < 0){
-        if (y > 0){
+        if (h > 0){
             Ang1 = Ang_a + 180 + Anga;
         }
-        else if (y < 0){
+        else if (h < 0){
             //Error place
-            printf("Error place");
+            // printf("Error place");
             return;
         }
     }
 
-    Ang1 = round(Ang1);
+    Ang1 = Ang1;
 
-    Ang3 = round(360-Ang1-Ang2);
+    Ang3 = 360-Ang1-Ang2;
 
-    Ang__1 = round(100.0 / 9.0 * (Ang1 + 45.0));
+    Ang__1 = 100.0 / 9.0 * (Ang1 + 45.0);
 
-    Ang__2 = round(200.0 / 27.0 * (382.5 - Ang2));
+    Ang__2 = 200.0 / 27.0 * (382.5 - Ang2);
 
-    Ang__3 = round(100.0 / 9.0 * (315.0 - Ang3));
+    Ang__3 = 100.0 / 9.0 * (315.0 - Ang3);
 
     if (Ang__1 > 2000){
             if (Anga < 0){
@@ -518,17 +521,17 @@ void UART_DELTA_PROC(double x,double y){
         else{
         Ang1 = Anga - Ang_a;
     }
-        Ang1 = round(Ang1);
+        Ang1 = Ang1;
 
-    Ang3 = round(Ang3 - 2.0 * (180 - Ang_a - Ang2));
+    Ang3 = Ang3 - 2.0 * (180 - Ang_a - Ang2);
 
-    Ang2 = round(360-Ang2);
+    Ang2 = 360-Ang2;
 
-    Ang__1 = round(100.0 / 9.0 * (Ang1 + 45.0));
+    Ang__1 = 100.0 / 9.0 * (Ang1 + 45.0);
     
-    Ang__2 = round(200.0 / 27.0 * (382.5 - Ang2));
+    Ang__2 = 200.0 / 27.0 * (382.5 - Ang2);
 
-    Ang__3 = round(100.0 / 9.0 * (315.0 - Ang3));
+    Ang__3 = 100.0 / 9.0 * (315.0 - Ang3);
 
     }
 
@@ -546,7 +549,7 @@ void UART_DELTA_PROC(double x,double y){
 
     if (Ang__1 < 500 || Ang__2 < 500 || Ang__3 < 500 || Ang__1 > 2500 || Ang__2 > 2500|| Ang__3 > 2500){
         //无法到达
-        printf("无法到达");
+        // printf("无法到达");
         return;
     } 
 
@@ -572,7 +575,50 @@ void UART_DELTA_PROC(double x,double y){
 
 }
 
+/*
+* 输入：水平误差x(图像误差)
+* 误差进行函数拟合
+* 输出：舵机水平移动参数
+*/
+int UART_DELTA_PROC_V(int x){
 
+    if (!x){
+        //误差为零
+    }
+
+    else{
+        //误差在10以内
+        if (abs(x) <= 10){
+            return;
+
+        }
+        //误差在10~20
+        else if (abs(x) <= 20){
+            return;
+        }
+        //误差在20~30
+        else if (abs(x) <= 30){
+            return;
+
+        }
+        //误差在30~40
+        else if (abs(x) <= 40){
+            return;
+
+
+        }
+        //误差在40~50
+        else if (abs(x) <= 50){
+            return;
+
+        }
+        //误差在50~60
+        else if (abs(x) <= 60){
+            return;
+        }
+    }
+    
+}
 
 
 
