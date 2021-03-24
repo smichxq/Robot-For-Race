@@ -413,8 +413,8 @@ void loop()
   再命令电机移动directions
   */
     BTCtrl();
-    delay(1000);
-    pathPlan();
+    // delay(1000);
+    // pathPlan();
 //   Serial.println(currentStates);
   
   if (!ctrl_flag){
@@ -438,6 +438,7 @@ void loop()
 * 参数2：实际测试后为定值
 * 输出：UART_DELTA_VALUE[3] 舵机移动参数
 */
+//x=216 h = 62
 void UART_DELTA_PROC(double x,double h){
 
     double L1 = 20.0;
@@ -1433,22 +1434,22 @@ void motorA1(){
       if (ctrlFlag){
 
         //左移A1
-        if ((currentStates == Left || currentStates == micro_line_L) && ctrlFlag){
+        if ((currentStates == Left || currentStates == micro_line_L || currentStates == mid_line_L) && ctrlFlag){
             analogWrite(MotorPin1,spdA1 + Left_FixA1);
 //             Serial.println(spdA1 + Left_FixA1);
 
         }
         //右移A1
-        if ((currentStates == Right || currentStates == micro_line_R) && ctrlFlag){
+        if ((currentStates == Right || currentStates == micro_line_R || currentStates == mid_line_R) && ctrlFlag){
             analogWrite(MotorPin1,spdA1 + Right_FixA1);
 
         }
         //前
-        if((currentStates == goStraight || currentStates == micro_line_F) && ctrlFlag){
+        if((currentStates == goStraight || currentStates == micro_line_F || currentStates == mid_line_F) && ctrlFlag){
             analogWrite(MotorPin1,spdA1 + Go_FixA1);
         }
         //后
-        if ((currentStates == goBack || currentStates == micro_line_B) && ctrlFlag){
+        if ((currentStates == goBack || currentStates == micro_line_B || currentStates == mid_line_B) && ctrlFlag){
             analogWrite(MotorPin1,spdA1 + Back_FixA1);
         }
         //stp
@@ -1479,21 +1480,21 @@ void motorA2(){
       if (ctrlFlag){
 
         //左移A2
-        if ((currentStates == Left || currentStates == micro_line_L) && ctrlFlag){
+        if ((currentStates == Left || currentStates == micro_line_L || currentStates == mid_line_L) && ctrlFlag){
             analogWrite(MotorPin2,spdA2 + Left_FixA2);
 //             Serial.println(spdA2 + Left_FixA2);
 
         }
         //右移A2
-        if ((currentStates == Right || currentStates == micro_line_R) && ctrlFlag){
+        if ((currentStates == Right || currentStates == micro_line_R || currentStates == mid_line_R) && ctrlFlag){
             analogWrite(MotorPin2,spdA2 + Right_FixA2);
         }
 
-        if ((currentStates == goStraight || currentStates == micro_line_F) && ctrlFlag){
+        if ((currentStates == goStraight || currentStates == micro_line_F || currentStates == mid_line_F) && ctrlFlag){
             analogWrite(MotorPin2,spdA2 + Go_FixA2);
         }
 
-        if ((currentStates == goBack || currentStates == micro_line_B)  && ctrlFlag){
+        if ((currentStates == goBack || currentStates == micro_line_B || currentStates == mid_line_B)  && ctrlFlag){
             analogWrite(MotorPin2,spdA2 + Back_FixA2);
         }
 
@@ -1524,21 +1525,21 @@ void motorB1(){
   {
       if (ctrlFlag){
         //左移B1
-        if ((currentStates == Left || currentStates == micro_line_L) && ctrlFlag){
+        if ((currentStates == Left || currentStates == micro_line_L || currentStates == mid_line_L) && ctrlFlag){
             analogWrite(MotorPin3,spdB1 + Left_FixB1);
 //             Serial.println(spdB1 + Left_FixB1);
 
         }
 
         //右移B1
-        if ((currentStates == Right || currentStates == micro_line_R) && ctrlFlag){
+        if ((currentStates == Right || currentStates == micro_line_R || currentStates == mid_line_R) && ctrlFlag){
             analogWrite(MotorPin3,spdB1 + Right_FixB1);
         }
-        if ((currentStates == goStraight || currentStates == micro_line_F) && ctrlFlag){
+        if ((currentStates == goStraight || currentStates == micro_line_F || currentStates == mid_line_F) && ctrlFlag){
             analogWrite(MotorPin3,spdB1 + Go_FixB1);
         }
 
-        if ((currentStates == goBack || currentStates == micro_line_B)  && ctrlFlag){
+        if ((currentStates == goBack || currentStates == micro_line_B || currentStates == mid_line_B)  && ctrlFlag){
             analogWrite(MotorPin3,spdB1 + Back_FixB1);
         }
 
@@ -1566,22 +1567,22 @@ void motorB2(){
   {
       if (ctrlFlag){
         //左移B2
-        if ((currentStates == Left || currentStates == micro_line_L) && ctrlFlag){
+        if ((currentStates == Left || currentStates == micro_line_L || currentStates == mid_line_L) && ctrlFlag){
             analogWrite(MotorPin4,spdB2 + Left_FixB2);
 //             Serial.println(spdB2 + Left_FixB2);
 
         }
 
         //右移B2
-        if ((currentStates == Right || currentStates == micro_line_R) && ctrlFlag){
+        if ((currentStates == Right || currentStates == micro_line_R || currentStates == mid_line_R) && ctrlFlag){
             analogWrite(MotorPin4,spdB2 + Right_FixB2);
         }
         //前进
-        if ((currentStates == goStraight || currentStates == micro_line_F) && ctrlFlag){
+        if ((currentStates == goStraight || currentStates == micro_line_F || currentStates == mid_line_F) && ctrlFlag){
             analogWrite(MotorPin4,spdB2 + Go_FixB2);
         }
 
-        if ((currentStates == goBack || currentStates == micro_line_B)  && ctrlFlag){
+        if ((currentStates == goBack || currentStates == micro_line_B || currentStates == mid_line_B)  && ctrlFlag){
             analogWrite(MotorPin4,spdB2 + Back_FixB2);
         }
 
@@ -1673,6 +1674,34 @@ void directions(){
         }
         
         break;
+     case mid_line_F:
+        //printf("goStraight\n");
+        while (true){
+            Sensor_F_M = digitalRead(SensorPinF_2);
+
+            motorA1PNS(P);
+            motorB1PNS(P);
+            motorA2PNS(P);
+            motorB2PNS(P);
+
+            motorA1();
+            motorA2();
+            motorB1();
+            motorB2();
+            //压线
+            if (!Sensor_F_M){
+                motorA1PNS(S);
+                motorA2PNS(S);
+                motorB1PNS(S);
+                motorB2PNS(S);
+                // mp = mp->next;
+
+                break;
+            }
+
+        }
+        
+        break;
 
     case goBack:
 
@@ -1693,6 +1722,46 @@ void directions(){
         break;
 
     case micro_line_B:
+        //printf("goStraight\n");
+        while (true){
+            // Serial.println("!!!!!!!!!!!!!!!1");
+            Sensor_B_M = digitalRead(SensorPinB_2);
+
+
+            motorA1PNS(N);
+            motorA2PNS(N);
+            motorB1PNS(N);
+            motorB2PNS(N);
+            motorA1();
+
+            
+            motorA2();
+
+            
+            motorB1();
+
+            
+            motorB2();
+            //压线
+            if (!Sensor_B_M){
+                // motorA1PNS(P);
+                // motorA2PNS(P);
+                // motorB1PNS(P);
+                // motorB2PNS(P);
+
+                // delay(20);
+                motorA1PNS(S);
+                motorA2PNS(S);
+                motorB1PNS(S);
+                motorB2PNS(S);
+                break;
+            }
+
+        }
+        
+        break;
+
+    case mid_line_B:
         //printf("goStraight\n");
         while (true){
             // Serial.println("!!!!!!!!!!!!!!!1");
@@ -1781,6 +1850,38 @@ void directions(){
         }
         
         break;
+
+     case mid_line_L:
+        //printf("goStraight\n");
+        while(true){
+            Sensor_L_M = digitalRead(SensorPinL_2);
+
+            motorA1PNS(N);
+            motorA2PNS(P);
+            motorB1PNS(P);
+            motorB2PNS(N);
+
+            motorA1();
+
+            
+            motorA2();
+
+            
+            motorB1();
+
+            
+            motorB2();
+
+            if(!Sensor_L_M){
+                motorA1PNS(S);
+                motorA2PNS(S);
+                motorB1PNS(S);
+                motorB2PNS(S);
+                break;
+            }
+        }
+        
+        break;
         
     case Right:
     //右 A1 +7.3 B1 +4.9 B2 +10.7
@@ -1805,6 +1906,41 @@ void directions(){
         motorB2();
         break;
    case micro_line_R:
+        //printf("goStraight\n");
+
+        while (true)
+        {
+            Sensor_R_M = digitalRead(SensorPinR_2);
+        
+        
+            motorA1PNS(P);
+            motorA2PNS(N);
+            motorB1PNS(N);
+            motorB2PNS(P);
+            motorA1();
+
+        
+            motorA2();
+
+            
+            motorB1();
+
+            
+            motorB2();
+
+            if(!Sensor_R_M){
+                motorA1PNS(S);
+                motorA2PNS(S);
+                motorB1PNS(S);
+                motorB2PNS(S);
+                break;
+
+            }
+        }
+        
+        break;
+
+   case mid_line_R:
         //printf("goStraight\n");
 
         while (true)
@@ -2114,6 +2250,7 @@ void pathPlan()
     if (mp == NULL){
         Listflag = false;
         currentStates = stp;
+        mps = mps->next;
     }
   }
   
@@ -2442,6 +2579,13 @@ void pathPlan()
 
             //扫码请求
             reqs("#A$","#Aa$");
+        }   
+        
+        //第二次动态路径规划
+        if (mp->M_1 && !(mp->M_2) && !(mp->M_3)){
+            dynamicGrabPlan();
+            flagA = flagD = true;
+            break;
         }
 
         //抓取请求
@@ -2450,43 +2594,20 @@ void pathPlan()
             //抓取请求
             reqs("#B$","#Bb$");
             //请求完成后有4种情况:抓取当请求扫描下一个 抓取当前并得到规划 请求下一个并得到规划
+            
             //如果第二次没有规划,抓取第三个
 
             //抓取当前, UART_DELTA[0] UART_DELTA[1] UART_DELTA[2]=1
 
             if (UART_DELTA[2]){
-
-                //如果没有规划
-                if (!UART_PLAN[0]){
-                    //抓取当前移动到下一个
-                    ctrl_grab_servo();
-                    //误差重置
-                    UART_DELTA[2] = 0;
-                    //切换路径
-                    mp = mp->next;
-                }
-
-                else{
-                    //抓取当前
-
-                    //动态规划路径
-                    dynamicGrabPlan();
-
-                    //等待抓取完毕
-                    delay(1);
-                }
+                ctrl_grab_servo();
+                flagA = flagD = true;
+                delay(1);
+            }
+            else{
+                flagA = flagD = true;
                 
             }
-
-            //请求扫描下一个   请求下一个并得到规划
-            else {
-                //已在通信服务里运行
-
-
-                
-            }
-
-        }
 
     }
     
@@ -2562,7 +2683,7 @@ mission* S_Code(){
 
 //物料区
 mission* T_Obj(){
-  mission demo[7];
+  mission demo[8];
   //Front
   demo[0].A = false;
   demo[0].B = false;
@@ -2649,9 +2770,23 @@ mission* T_Obj(){
   demo[6].M_2 = false;
   demo[6].M_3 = true;
 
-  return createMissionList(7,demo);
+  //Stop-highlight-pathPlan
+
+  demo[7].A = false;
+  demo[7].B = false;
+  demo[7].C = true;
+  demo[7].D = false;
+  demo[7].E = false;
+  demo[7].M = true;
+  demo[7].M_1 = true;
+  demo[7].M_2 = false;
+  demo[7].M_3 = false;
+
+
+  return createMissionList(8,demo);
   
 }
+
 /*
 *抓取动态规划
 */
@@ -2825,92 +2960,85 @@ void dynamicGrabPlan(){
             }
 
         }
+                //130
+        else{
+            mission* p = NULL;
+            
+            p = (mission*)malloc(sizeof(mission));
 
+            mp->next = p;
+            //后
+            p->A = false;
+            p->B = true;
+            p->C = false;
+            p->D = false;
+            p->E = false;
+            p->M = false;
+            p->M_1 = false;
+            p->M_2 = false;
+            p->M_3 = false;
 
+            p->next = (mission*)malloc(sizeof(mission));
+            //STOP-REQ-Grab
+            p->next->A = false;
+            p->next->B = false;
+            p->next->C = true;
+            p->next->D = false;
+            p->next->E = false;
+            p->next->M = true;
+            p->next->M_1 = false;
+            p->next->M_2 = false;
+            p->next->M_3 = true;
 
+            p->next->next = (mission*)malloc(sizeof(mission));
+            
+            //前
+            p->next->next->A = false;
+            p->next->next->B = false;
+            p->next->next->C = false;
+            p->next->next->D = false;
+            p->next->next->E = false;
+            p->next->next->M = false;
+            p->next->next->M_1 = false;
+            p->next->next->M_2 = false;
+            p->next->next->M_3 = false;
 
+            p->next->next->next = (mission*)malloc(sizeof(mission));
+            //前
+            p->next->next->next->A = false;
+            p->next->next->next->B = false;
+            p->next->next->next->C = false;
+            p->next->next->next->D = false;
+            p->next->next->next->E = false;
+            p->next->next->next->M = false;
+            p->next->next->next->M_1 = false;
+            p->next->next->next->M_2 = false;
+            p->next->next->next->M_3 = false;
 
+            p->next->next->next->next = (mission*)malloc(sizeof(mission));
 
+            //STOP-REQ-Grab
+            p->next->next->next->next->A = false;
+            p->next->next->next->next->B = false;
+            p->next->next->next->next->C = true;
+            p->next->next->next->next->D = false;
+            p->next->next->next->next->E = false;
+            p->next->next->next->next->M = true;
+            p->next->next->next->next->M_1 = false;
+            p->next->next->next->next->M_2 = false;
+            p->next->next->next->next->M_3 = true;
 
+            p->next->next->next->next->next = NULL;
 
-            //130
-    else{
-        mission* p = NULL;
-        
-        p = (mission*)malloc(sizeof(mission));
+            }
 
-        mp->next = p;
-        //后
-        p->A = false;
-        p->B = true;
-        p->C = false;
-        p->D = false;
-        p->E = false;
-        p->M = false;
-        p->M_1 = false;
-        p->M_2 = false;
-        p->M_3 = false;
-
-        p->next = (mission*)malloc(sizeof(mission));
-        //STOP-REQ-Grab
-        p->next->A = false;
-        p->next->B = false;
-        p->next->C = true;
-        p->next->D = false;
-        p->next->E = false;
-        p->next->M = true;
-        p->next->M_1 = false;
-        p->next->M_2 = false;
-        p->next->M_3 = true;
-
-        p->next->next = (mission*)malloc(sizeof(mission));
-        
-        //前
-        p->next->next->A = false;
-        p->next->next->B = false;
-        p->next->next->C = false;
-        p->next->next->D = false;
-        p->next->next->E = false;
-        p->next->next->M = false;
-        p->next->next->M_1 = false;
-        p->next->next->M_2 = false;
-        p->next->next->M_3 = false;
-
-        p->next->next->next = (mission*)malloc(sizeof(mission));
-        //前
-        p->next->next->next->A = false;
-        p->next->next->next->B = false;
-        p->next->next->next->C = false;
-        p->next->next->next->D = false;
-        p->next->next->next->E = false;
-        p->next->next->next->M = false;
-        p->next->next->next->M_1 = false;
-        p->next->next->next->M_2 = false;
-        p->next->next->next->M_3 = false;
-
-        p->next->next->next->next = (mission*)malloc(sizeof(mission));
-
-        //STOP-REQ-Grab
-        p->next->next->next->next->A = false;
-        p->next->next->next->next->B = false;
-        p->next->next->next->next->C = true;
-        p->next->next->next->next->D = false;
-        p->next->next->next->next->E = false;
-        p->next->next->next->next->M = true;
-        p->next->next->next->next->M_1 = false;
-        p->next->next->next->next->M_2 = false;
-        p->next->next->next->next->M_3 = true;
-
-        p->next->next->next->next->next = NULL;
-
+            
         }
-
-        
-    }
 
     //规划无效
     else{
         //直接动态规划抓取第三个
+        
         
     }
 
@@ -3970,7 +4098,6 @@ bool decodes(){
             //扫描下一个 36 '$'
             if (UART_DATABUF[i+1] == 36){
                 //切换状态,车辆移动至下一格子
-                mp = mp->next;
                 //不可抓取
                 UART_DELTA[2] = 0;
                 return false;
@@ -3990,7 +4117,6 @@ bool decodes(){
             if (UART_DATABUF[i+1] == 38 && UART_DATABUF[i+13] == 36){
                 //解码存放
                 decode_b(i);
-
                 //更新路径
                 return false;
             }
