@@ -416,14 +416,14 @@ void loop()
     // delay(1000);
     // pathPlan();
 //   Serial.println(currentStates);
+
   
   if (!ctrl_flag){
 
   pathPlan();
-    // currentStates = goBack;
-    //   Serial.println(currentStates);
   directions();
-    stateFix();
+  stateFix();
+    
   }
 
 
@@ -1649,7 +1649,11 @@ void directions(){
       case micro_line_F:
         //printf("goStraight\n");
         while (true){
-            Sensor_F_M = digitalRead(SensorPinF_2);
+
+
+            Sensor_L_M = digitalRead(SensorPinL_2);
+            Sensor_R_M = digitalRead(SensorPinR_2);
+
 
             motorA1PNS(P);
             motorB1PNS(P);
@@ -1677,7 +1681,7 @@ void directions(){
      case mid_line_F:
         //printf("goStraight\n");
         while (true){
-            Sensor_F_M = digitalRead(SensorPinF_2);
+            Sensor_L_M = digitalRead(SensorPinF_2);
 
             motorA1PNS(P);
             motorB1PNS(P);
@@ -1689,7 +1693,7 @@ void directions(){
             motorB1();
             motorB2();
             //压线
-            if (!Sensor_F_M){
+            if (!Sensor_R_M && ! Sensor_L_M){
                 motorA1PNS(S);
                 motorA2PNS(S);
                 motorB1PNS(S);
@@ -1726,6 +1730,7 @@ void directions(){
         while (true){
             // Serial.println("!!!!!!!!!!!!!!!1");
             Sensor_B_M = digitalRead(SensorPinB_2);
+            
 
 
             motorA1PNS(N);
@@ -1765,9 +1770,10 @@ void directions(){
         //printf("goStraight\n");
         while (true){
             // Serial.println("!!!!!!!!!!!!!!!1");
-            Sensor_B_M = digitalRead(SensorPinB_2);
 
 
+            Sensor_L_M = digitalRead(SensorPinL_2);
+            Sensor_R_M = digitalRead(SensorPinR_2);
             motorA1PNS(N);
             motorA2PNS(N);
             motorB1PNS(N);
@@ -1783,7 +1789,7 @@ void directions(){
             
             motorB2();
             //压线
-            if (!Sensor_B_M){
+            if (!Sensor_L_M && !Sensor_R_M){
                 // motorA1PNS(P);
                 // motorA2PNS(P);
                 // motorB1PNS(P);
@@ -1854,7 +1860,9 @@ void directions(){
      case mid_line_L:
         //printf("goStraight\n");
         while(true){
-            Sensor_L_M = digitalRead(SensorPinL_2);
+            
+        Sensor_F_M = digitalRead(SensorPinF_2);
+        Sensor_B_M = digitalRead(SensorPinB_2);
 
             motorA1PNS(N);
             motorA2PNS(P);
@@ -1872,7 +1880,7 @@ void directions(){
             
             motorB2();
 
-            if(!Sensor_L_M){
+            if(!Sensor_F_M && !Sensor_B_M){
                 motorA1PNS(S);
                 motorA2PNS(S);
                 motorB1PNS(S);
@@ -1945,8 +1953,10 @@ void directions(){
 
         while (true)
         {
-            Sensor_R_M = digitalRead(SensorPinR_2);
-        
+
+            Sensor_F_M = digitalRead(SensorPinF_2);
+            Sensor_B_M = digitalRead(SensorPinB_2);
+
         
             motorA1PNS(P);
             motorA2PNS(N);
@@ -1963,7 +1973,7 @@ void directions(){
             
             motorB2();
 
-            if(!Sensor_R_M){
+            if(!Sensor_F_M && !Sensor_B_M){
                 motorA1PNS(S);
                 motorA2PNS(S);
                 motorB1PNS(S);
@@ -2014,7 +2024,7 @@ void ctrl_grab_servo(){
     servos[3].Position = 546;  //700位置
 
     servos[4].ID = 6;       //2号舵机
-    servos[4].Position = x;  //1400位置
+    servos[4].Position = 2222;  //1400位置
 
     myse.moveServos(servos,5,9000);
     delay(10000);
@@ -2585,7 +2595,7 @@ void pathPlan()
         if (mp->M_1 && !(mp->M_2) && !(mp->M_3)){
             dynamicGrabPlan();
             flagA = flagD = true;
-            break;
+            return;
         }
 
         //抓取请求
@@ -2613,7 +2623,11 @@ void pathPlan()
     
 /*===========================任务规划==================================*/
 
+    }
+
 }
+
+
 /*
 * 路径序列测试函数
 * 将规划好的路径存入该函数
@@ -3951,57 +3965,7 @@ void stateFix()
             setSpdB2(targetSpd);
         }
         break;
-    //微调前模式
-    case micro_line_F:
-        break;
 
-
-
-    case micro_line_B:
-        
-        break;
-        
-    //微调左模式
-    case micro_line_L:
-        //车身左前偏移(当前朝向右偏)
-        if (Sensor_F_L){
-          SensorFlagL = true;
-        }
-        //车身右前偏移(当前朝向左偏)
-        if (Sensor_F_R){
-          SensorFlagR = true;
-        }
-        //车身正
-        if (!Sensor_F_R && !Sensor_F_M && !Sensor_F_L){
-          SensorFlagR = false;
-          SensorFlagL = false;
-          setSpdA2(targetSpd-20);
-          setSpdB1(targetSpd-20);
-          //加速恢复
-          setSpdA1(targetSpd-20);
-          setSpdB2(targetSpd-20);
-        }
-        //右偏未校正
-        if (SensorFlagL){
-            Fix_T2 = FixFctr_LR*(getTickTime() - Fix_T1);
-            //减速修正
-            setSpdA2(targetSpd + Fix_T2);
-            setSpdB1(targetSpd - Fix_T2);
-            //加速修正
-            setSpdA1(targetSpd + Fix_T2);
-            setSpdB2(targetSpd - Fix_T2);
-        }
-        //左偏未校正
-        if (SensorFlagR){
-            Fix_T2 = FixFctr_LR*(getTickTime() - Fix_T1);
-            //减速修正
-            setSpdA1(targetSpd - Fix_T2);
-            setSpdB2(targetSpd + Fix_T2);
-            //加速修正
-            setSpdA2(targetSpd - Fix_T2);
-            setSpdB1(targetSpd + Fix_T2);
-        }
-        break;
 
     
     default:
@@ -4117,6 +4081,7 @@ bool decodes(){
             if (UART_DATABUF[i+1] == 38 && UART_DATABUF[i+13] == 36){
                 //解码存放
                 decode_b(i);
+                UART_DELTA[2] = 1;
                 //更新路径
                 return false;
             }
