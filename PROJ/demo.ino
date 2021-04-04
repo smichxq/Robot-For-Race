@@ -2,6 +2,32 @@
 * 路径 1743
 */
 
+#include <LCDWIKI_GUI.h> //Core graphics library
+#include <LCDWIKI_SPI.h> //Hardware-specific library
+
+//paramters define
+#define MODEL ILI9225
+#define CS   A14
+#define RST  A13
+#define CD   A12
+#define SDA  A11
+
+#define SCK  A6
+#define LED  A5   //if you don't need to control the LED pin,you should set it to -1 and set it to 3.3V
+
+//the definiens of software spi mode as follow:
+//if the IC model is known or the modules is unreadable,you can use this constructed function
+LCDWIKI_SPI mylcd(MODEL,CS,CD,-1,SDA,RST,SCK,LED); //model,cs,dc,sdo,sda,reset,sck,led
+
+#define  BLACK   0x0000
+#define BLUE    0x001F
+#define RED     0xF800
+#define GREEN   0x07E0
+#define CYAN    0x07FF
+#define MAGENTA 0xF81F
+#define YELLOW  0xFFE0
+#define WHITE   0xFFFF
+
 
 
 short Left_FixA1 = 23;
@@ -98,7 +124,7 @@ short Back_FixB2 = 4.2;
 int targetSpd = 100;
 
 //取样周期
-#define smpT 0.2
+#define smpT 5
 
 //当前方向
 short currentStates;
@@ -148,22 +174,22 @@ float Ek2_A1, Ek2_A2, Ek2_B1 ,Ek2_B2;                      //再前一次误差 
 
 
 //电机接口
-#define CodeA1 18
+// #define CodeA1 18
 #define MotorPin1 4
 #define Motor1Ain2 A1
 #define Motor1Ain1 A2
 
-#define CodeA2 19
+// #define CodeA2 19
 #define MotorPin2 5
 #define Motor2Ain1 A3
 #define Motor2Ain2 A4
 
-#define CodeB1 20
+// #define CodeB1 20
 #define MotorPin3 6
 #define Motor3Ain1 A8
 #define Motor3Ain2 A7
 
-#define CodeB2 21
+// #define CodeB2 21
 #define MotorPin4 7
 #define Motor4Ain1 A9
 #define Motor4Ain2 A10
@@ -227,15 +253,17 @@ typedef struct missions
 
 byte UART_DATABUF[50];//数据缓冲区
 
-byte UART_DECODE[8] = {97,98,99,100,101,102,103,104};//请求服务确认码
+byte UART_DECODE[8] = {0x61,0x62,0x63,0x64,0x65,0x66,0x67,0x68};//请求服务确认码
 
-int UART_TARGET[6];//任务码
+int UART_TARGET[6] = {0,0,0,0,0,0};//任务码
+char* CODE1;
+char* CODE2;
 
-int UART_DELTA[3]={0,0,0};//当前误差
+int UART_DELTA[3] = {0,0,0};//当前误差
 
 int UART_DELTA_VALUE[3];
 
-byte UART_PLAN[3]={0,0,0};//规划
+int UART_PLAN[3] = {0,0,0};//规划
 /*===================================================UART===================================================*/
 
 byte BTData[50];
@@ -301,7 +329,7 @@ short Sensor_L_M = 1;
 //前后 0.150
 //左右 0.1
 float FixFctr_GB = 0.40;
-float FixFctr_LR = 0.190;
+float FixFctr_LR = 0.490;
 //偏移修正控制因子
 bool ctrlFlag = true;
 bool SensorFlagL = false;
@@ -354,22 +382,32 @@ bool mid_flag_R = false;
 
 bool ctrl_flag = true;
 
+bool onef = true;
+
 
 
 LobotServoController myse(Serial3);//舵机控制
 
 void setup() {
     delay(200);
-    
+    //显示屏初始化
+    LEDInit();
+    LEDCtrl("Spark",0,20,5,"krapS",0,60,5);
     sensorInit();
-    mps = missionsInit();
+    // mps = missionsInit();
     // mp = mps->head;
-    mp = test();
+
+
+    mp = scanTest();
     Serial.begin(115200);
     //openmv通信
     Serial1.begin(19200);
     //机械臂通信
     Serial3.begin(9600);
+    //机械臂初始化
+    
+    myse.runActionGroup(0,1);
+    
 
     // while(mps){
     //     while(mp){
@@ -405,6 +443,7 @@ void setup() {
   delay(500);
 
 }  
+
 void loop()
 {    
 
@@ -412,25 +451,103 @@ void loop()
   先使用路径规划pathPlan
   再命令电机移动directions
   */
-    BTCtrl();
+    // BTCtrl();
+    
     // delay(1000);
     // pathPlan();
 //   Serial.println(currentStates);
+// currentStates = goStraight;
 
   
-  if (!ctrl_flag){
+//   if (!ctrl_flag){
 
   pathPlan();
   directions();
+
   stateFix();
-    
+  
+  if(UART_TARGET[0] && onef){
+      LEDCtrl(CODE1,0,20,4,CODE2,0,60,4);
+      onef = false;
   }
+    
+//   }
 
 
 
   
 
 }
+
+//LED服务初始化
+void LEDInit(){
+    mylcd.Init_LCD();
+    mylcd.Fill_Screen(BLACK);
+    mylcd.Set_Text_Mode(0);
+}
+/*
+* LED显示服务
+* 参数为两个任务码(字符串)
+* 不可重复调用
+*/
+void LEDCtrl(char* MISSION_CODE_1, short x_1 ,short y_1, short size_1 ,char* MISSION_CODE_2, short x_2 ,short y_2, short size_2) 
+{
+    
+  
+  mylcd.Set_Text_Mode(0);
+  //display 1 times string
+  mylcd.Fill_Screen(0x0000);
+
+
+  mylcd.Set_Text_colour(RED);
+  mylcd.Set_Text_Back_colour(BLACK);
+  mylcd.Set_Text_Size(size_1);
+  mylcd.Print_String(MISSION_CODE_1, x_1, y_1);
+ // mylcd.Print_Number_Float(01234.56789, 2, 0, 8, '.', 0, ' ');  
+ // mylcd.Print_Number_Int(0xDEADBEF, 0, 16, 0, ' ',16);
+  
+  //display 2 times string
+//   mylcd.Set_Text_colour(GREEN);
+//   mylcd.Set_Text_Size(8);//大小
+//   mylcd.Print_String("+", 50, 80);//50左右距离，80上下距离
+//   mylcd.Print_Number_Float(01234.56789, 2, 0, 44, '.', 0, ' ');  
+//   mylcd.Print_Number_Int(0xDEADBEF, 0, 60, 0, ' ',16);
+ 
+ //display 3 times string
+  mylcd.Set_Text_colour(BLUE);
+  mylcd.Set_Text_Size(size_2);
+  mylcd.Print_String(MISSION_CODE_2, x_2, y_2);
+//   mylcd.Print_Number_Float(01234.56789, 2, 0, 104, '.', 0, ' ');  
+//   mylcd.Print_Number_Int(0xDEADBEF, 0, 128, 0, ' ',16);
+  
+//   delay(3000);
+//   while(1);
+    Serial.println("LED1===================");
+    Serial.println(*MISSION_CODE_1);
+    MISSION_CODE_1++;
+    Serial.println(*MISSION_CODE_1);
+    MISSION_CODE_1++;
+    Serial.println(*MISSION_CODE_1);
+    MISSION_CODE_1++;
+    Serial.println(*MISSION_CODE_1);
+    MISSION_CODE_1++;
+    Serial.println(*MISSION_CODE_1);
+    Serial.println("LED1===================");
+
+    Serial.println("LED2===================");
+    Serial.println(*MISSION_CODE_2);
+    MISSION_CODE_2++;
+    Serial.println(*MISSION_CODE_2);
+    MISSION_CODE_2++;
+    Serial.println(*MISSION_CODE_2);
+    MISSION_CODE_2++;
+    Serial.println(*MISSION_CODE_2);
+    MISSION_CODE_2++;
+    Serial.println(*MISSION_CODE_2);
+    Serial.println("LED2===================");
+  
+}
+
 
 /*
 * 处理误差转化为移动数据(垂直面移动)
@@ -621,6 +738,11 @@ int UART_DELTA_PROC_V(int x){
     
 }
 
+//测试路径2
+// mission* test2(){
+//     mission demo[];
+// }
+
 
 
 //测试路径
@@ -799,7 +921,7 @@ mission* test(){
 
      //前
   demo[16].A = false;
-  demo[16].B = true;
+  demo[16].B = false;
   demo[16].C = false;
   demo[16].D = false;
   demo[16].E = false;
@@ -841,7 +963,7 @@ mission* test(){
 
      //前
   demo[20].A = false;
-  demo[20].B = true;
+  demo[20].B = false;
   demo[20].C = false;
   demo[20].D = false;
   demo[20].E = false;
@@ -1183,10 +1305,24 @@ void BTCtrl(){
     
 }
 
+mission* scanTest(){
+    mission demo[1];
+    demo[0].A = false;
+    demo[0].B = false;
+    demo[0].C = true;
+    demo[0].D = false;
+    demo[0].E = false;
+    demo[0].M = true;
+    demo[0].M_1 = false;
+    demo[0].M_2 = false;
+    demo[0].M_3 = false;
+    return demo;
 
+}
 
 //LED指示灯,参数为次数
 void blbl(int j) {
+    pinMode(LED_BUILTIN,OUTPUT);
     for (int i= 0; i<j ; i++){
 
         digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
@@ -1199,26 +1335,61 @@ void blbl(int j) {
 
 
 /*
-* 返回任务码
-*
+* 任务码转类型
+* int -> char
 */
-char* getTarget(){
-  char* targets = NULL;
-  targets = (char*)malloc(sizeof(3));
-  /*
-  * 与openmv通信
-  * 得到串口返回任务码
-  * 
-  *targets = 'R';
-  targets++;
-  *targets = 'G';
-  targets++;
-  *targets = 'B';
-  targets-=2;
-  */
-  return NULL;
+void getCode(){
 
+    CODE1 = (char*)malloc(sizeof(5));
+    Serial.println("---------------");
+
+    itoa(UART_TARGET[0],CODE1,10);
+    Serial.println(*CODE1);
+    
+    CODE1++;
+    
+    itoa(UART_TARGET[1],CODE1,10);
+    
+    Serial.println(*CODE1);
+    
+    CODE1++;
+
+    itoa(UART_TARGET[2],CODE1,10);
+    Serial.println(*CODE1);
+
+    CODE1++;
+    *CODE1 = "\\";
+
+    CODE1++;
+    *CODE1 = "0";
+
+
+
+
+
+    CODE2 = (char*)malloc(sizeof(5));
+    
+
+    itoa(UART_TARGET[3],CODE2,10);
+    Serial.println(*CODE2);
+    CODE2++;
+    itoa(UART_TARGET[4],CODE2,10);
+    Serial.println(*CODE2);
+    CODE2++;
+    itoa(UART_TARGET[5],CODE2,10);
+    Serial.println(*CODE2);
+    CODE2++;
+    *CODE2 = "\\";
+
+    CODE2++;
+    *CODE2 = "0";
+
+    CODE1 -= 3;
+    CODE2 -= 3;
+    Serial.println("localSaving......done!!");
 }
+
+
 /* 
 * 传感器初始化
 */
@@ -1263,20 +1434,20 @@ void motorInit(){
   pinMode(A10,OUTPUT);
 
   //编码器外部中断
-  pinMode(CodeA1,INPUT);
-  pinMode(CodeA2,INPUT);
-  pinMode(CodeB1,INPUT);
-  pinMode(CodeB2,INPUT);
+//   pinMode(CodeA1,INPUT);
+//   pinMode(CodeA2,INPUT);
+//   pinMode(CodeB1,INPUT);
+//   pinMode(CodeB2,INPUT);
 
 /*
 * 外部中断口服务初始化
 * int.2 int.3 int.4 int.5
 *   21   20     19    18
 */
-  attachInterrupt(5, isr0, CHANGE);
-  attachInterrupt(4, isr1, CHANGE);
-  attachInterrupt(3, isr2, CHANGE);
-  attachInterrupt(2, isr3, CHANGE);
+//   attachInterrupt(5, isr0, CHANGE);
+//   attachInterrupt(4, isr1, CHANGE);
+//   attachInterrupt(3, isr2, CHANGE);
+//   attachInterrupt(2, isr3, CHANGE);
   
 
   
@@ -1285,7 +1456,7 @@ void motorInit(){
 //中断服务初始化
 
 void IntServiceInit(){
-    MsTimer2::set(smpT,acc);
+    MsTimer2::set(5,LEDCtrl);
     MsTimer2::start();
 }
 
@@ -1418,7 +1589,7 @@ void setSpdB2(short spd){
 }
 
 /*
-* 电机命令函数 
+* 电机命令函数 o't
 * A1 A2 
 * B1 B2
 * 
@@ -1433,13 +1604,13 @@ void motorA1(){
   {
       if (ctrlFlag){
 
-        //左移A1
+        //左移
         if ((currentStates == Left || currentStates == micro_line_L || currentStates == mid_line_L) && ctrlFlag){
             analogWrite(MotorPin1,spdA1 + Left_FixA1);
 //             Serial.println(spdA1 + Left_FixA1);
 
         }
-        //右移A1
+        //右移
         if ((currentStates == Right || currentStates == micro_line_R || currentStates == mid_line_R) && ctrlFlag){
             analogWrite(MotorPin1,spdA1 + Right_FixA1);
 
@@ -1670,7 +1841,7 @@ void directions(){
                 motorA2PNS(S);
                 motorB1PNS(S);
                 motorB2PNS(S);
-                // mp = mp->next;
+                
 
                 break;
             }
@@ -1698,7 +1869,7 @@ void directions(){
                 motorA2PNS(S);
                 motorB1PNS(S);
                 motorB2PNS(S);
-                // mp = mp->next;
+                
 
                 break;
             }
@@ -1749,12 +1920,6 @@ void directions(){
             motorB2();
             //压线
             if (!Sensor_B_M){
-                // motorA1PNS(P);
-                // motorA2PNS(P);
-                // motorB1PNS(P);
-                // motorB2PNS(P);
-
-                // delay(20);
                 motorA1PNS(S);
                 motorA2PNS(S);
                 motorB1PNS(S);
@@ -1790,12 +1955,6 @@ void directions(){
             motorB2();
             //压线
             if (!Sensor_L_M && !Sensor_R_M){
-                // motorA1PNS(P);
-                // motorA2PNS(P);
-                // motorB1PNS(P);
-                // motorB2PNS(P);
-
-                // delay(20);
                 motorA1PNS(S);
                 motorA2PNS(S);
                 motorB1PNS(S);
@@ -1892,16 +2051,12 @@ void directions(){
         break;
         
     case Right:
-    //右 A1 +7.3 B1 +4.9 B2 +10.7
-//        setSpdA1(targetSpd + 7.3);
-//        setSpdA2(targetSpd);
-//        setSpdB1(targetSpd + 4.9);
-//        setSpdB2(targetSpd + 10.7);
-        //printf("Right\n");
+
         motorA1PNS(P);
         motorB1PNS(N);
         motorA2PNS(N);
         motorB2PNS(P);
+
         motorA1();
 
         
@@ -1912,6 +2067,7 @@ void directions(){
 
         
         motorB2();
+        // Serial.println("")
         break;
    case micro_line_R:
         //printf("goStraight\n");
@@ -2260,7 +2416,11 @@ void pathPlan()
     if (mp == NULL){
         Listflag = false;
         currentStates = stp;
-        mps = mps->next;
+
+
+        //整体规划启用
+        // mps = mps->next;
+        // mp = mps->head;
     }
   }
   
@@ -2586,9 +2746,28 @@ void pathPlan()
     if (currentStates == stp && mp->M){
         //扫码请求
         if ( !(mp->M_1) && !(mp->M_2) && !(mp->M_3) ){
-
+            //机械臂动作
+            Serial.println("ArmAct");
+            // int i = 22500;
+            myse.runActionGroup(1,1);
+            delay(2000);
             //扫码请求
             reqs("#A$","#Aa$");
+            
+
+            //持久化存储，LED显示
+            getCode();
+            //收回动作
+
+            // i = 500;
+            myse.runActionGroup(2,1);
+            delay(2000);
+            //开始下一个任务序列
+            // flagA = flagD = true;//切换序列只用该方法，禁止使用任务指针！！！
+            // mps = mps->next;
+            // mp = mps->head;
+
+
         }   
         
         //第二次动态路径规划
@@ -2602,18 +2781,23 @@ void pathPlan()
         if ( !(mp->M_1) && !(mp->M_2) && mp->M_3 ){
 
             //抓取请求
+            myse.runActionGroup(3,1);
+
             reqs("#B$","#Bb$");
-            //请求完成后有4种情况:抓取当请求扫描下一个 抓取当前并得到规划 请求下一个并得到规划
+            
+            //最新：Openmv发送误差后即可移动！！！！！！！！！！！！！！！！！！！
             
             //如果第二次没有规划,抓取第三个
 
             //抓取当前, UART_DELTA[0] UART_DELTA[1] UART_DELTA[2]=1
 
             if (UART_DELTA[2]){
-                ctrl_grab_servo();
+                // ctrl_grab_servo();
                 flagA = flagD = true;
                 delay(1);
             }
+
+            //移动到下一个
             else{
                 flagA = flagD = true;
                 
@@ -2735,69 +2919,45 @@ mission* T_Obj(){
 
 
 
-  //Right-Line
-  demo[3].A = true;
-  demo[3].B = true;
-  demo[3].C = false;
-  demo[3].D = true;
+  //Stop-REQ-Grub
+  demo[3].A = false;
+  demo[3].B = false;
+  demo[3].C = true;
+  demo[3].D = false;
   demo[3].E = false;
-  demo[3].M = false;
+  demo[3].M = true;
   demo[3].M_1 = false;
   demo[3].M_2 = false;
-  demo[3].M_3 = false;
-
-
-  //Stop-Grab_SecondFloor
-  demo[4].A = false;
-  demo[4].B = false;
-  demo[4].C = true;
-  demo[4].D = false;
-  demo[4].E = false;
-  demo[4].M = true;
-  demo[4].M_1 = false;
-  demo[4].M_2 = false;
-  demo[4].M_3 = true;
-
-
+  demo[3].M_3 = true;
 
 
   //Front-Mid-Line
+  demo[4].A = false;
+  demo[4].B = false;
+  demo[4].C = false;
+  demo[4].D = false;
+  demo[4].E = true;
+  demo[4].M = false;
+  demo[4].M_1 = false;
+  demo[4].M_2 = false;
+  demo[4].M_3 = false;
+
+
+
+
+  //Stop-REQ-Grub
   demo[5].A = false;
   demo[5].B = false;
-  demo[5].C = false;
+  demo[5].C = true;
   demo[5].D = false;
-  demo[5].E = true;
-  demo[5].M = false;
+  demo[5].E = false;
+  demo[5].M = true;
   demo[5].M_1 = false;
   demo[5].M_2 = false;
-  demo[5].M_3 = false;
+  demo[5].M_3 = true;
 
 
-  //Stop-REQ-Grab-SecondFloor
-  demo[6].A = false;
-  demo[6].B = false;
-  demo[6].C = true;
-  demo[6].D = false;
-  demo[6].E = false;
-  demo[6].M = true;
-  demo[6].M_1 = false;
-  demo[6].M_2 = false;
-  demo[6].M_3 = true;
-
-  //Stop-highlight-pathPlan
-
-  demo[7].A = false;
-  demo[7].B = false;
-  demo[7].C = true;
-  demo[7].D = false;
-  demo[7].E = false;
-  demo[7].M = true;
-  demo[7].M_1 = true;
-  demo[7].M_2 = false;
-  demo[7].M_3 = false;
-
-
-  return createMissionList(8,demo);
+  return createMissionList(6,demo);
   
 }
 
@@ -3761,7 +3921,7 @@ void stateFix()
         //偏右
         if (!Sensor_R_L && Sensor_R_R && ctrlFlag)
         {
-//          Serial.println("===偏右===");
+        //  Serial.println("=============================================偏右===");
 
             SensorFlagL = true;//标记偏向
             ctrlFlag = false;//计时控制因子
@@ -3771,7 +3931,7 @@ void stateFix()
         //偏左
         if (!Sensor_R_R && Sensor_R_L && ctrlFlag) 
         {
-//          Serial.println("===偏左===");
+        //  Serial.println("=============================================偏左===");
             SensorFlagR = true;//标记偏向哪一侧
             ctrlFlag = false;//计时控制因子
             Fix_T1 = getTickTime();
@@ -3785,7 +3945,7 @@ void stateFix()
 
 
             //左侧碰线(当前朝向)
-            if ( (!Sensor_B_M && !Sensor_B_R) || (!Sensor_B_M && !Sensor_B_L) || (!Sensor_B_M && !Sensor_B_R && !Sensor_B_L)){
+            if ((!Sensor_B_M && !Sensor_B_R) || (!Sensor_B_M && !Sensor_B_L) || (!Sensor_B_R && !Sensor_B_L) || (!Sensor_B_M && !Sensor_B_R && !Sensor_B_L)){
                 
                 // setSpdA1(0);
                 // setSpdA2(0);
@@ -3794,6 +3954,7 @@ void stateFix()
 
                 while (true)
                 {
+                    // Serial.println("================================================方格前侧碰线修正中===");
                     Sensor_B_L = digitalRead(SensorPinB_1);
                     Sensor_B_R = digitalRead(SensorPinB_3);
                     Sensor_B_M = digitalRead(SensorPinB_2);
@@ -3827,7 +3988,7 @@ void stateFix()
                         setSpdA2(targetSpd);
                         setSpdB1(targetSpd);
                         setSpdB2(targetSpd);
-                        // Serial.println("左偏跳出");
+                        // Serial.println("=============================================方格前侧跳出");
                         break;
 
                     }
@@ -3843,7 +4004,7 @@ void stateFix()
 
             //右侧碰线(当前朝向)
 
-            if ( (!Sensor_F_M && !Sensor_F_R) || (!Sensor_F_M && !Sensor_F_L) || (!Sensor_F_M && !Sensor_F_L && !Sensor_F_R) ){
+            if ( (!Sensor_F_M && !Sensor_F_R) || (!Sensor_F_M && !Sensor_F_L) || (!Sensor_F_R && !Sensor_F_L) || (!Sensor_F_M && !Sensor_F_L && !Sensor_F_R) ){
                 // setSpdA1(0);
                 // setSpdA2(0);
                 // setSpdB1(0);
@@ -3851,6 +4012,7 @@ void stateFix()
 
                 while (true)
                 {
+                    // Serial.println("================================================方格后侧碰线修正中===");
                     Sensor_F_L = digitalRead(SensorPinF_1);
                     Sensor_F_R = digitalRead(SensorPinF_3);
                     Sensor_F_M = digitalRead(SensorPinF_2);
@@ -3881,11 +4043,13 @@ void stateFix()
                         motorA2PNS(S);
                         motorB1PNS(S);
                         motorB2PNS(S);
+                        delay(2);
                         //速度恢复
                         setSpdA1(targetSpd);
                         setSpdA2(targetSpd);
                         setSpdB1(targetSpd);
                         setSpdB2(targetSpd);
+                        // Serial.println("================================================方格后侧碰线跳出===");
                         break;
 
 
@@ -3906,7 +4070,7 @@ void stateFix()
 
         if (SensorFlagR)
         {
-//          Serial.println("===偏左修正中===");
+        //  Serial.println("================================================偏左修正中===");
             Fix_T2 = FixFctr_LR*(getTickTime() - Fix_T1);
             //减速修正
             setSpdA1(targetSpd + Fix_T2);
@@ -3920,7 +4084,7 @@ void stateFix()
         //偏左已修正
         if (SensorFlagR && Sensor_R_L && Sensor_R_R && Sensor_R_M)
         {
-//          Serial.println("===偏左已修正===");
+        //  Serial.println("================================================偏左已修正===");
             SensorFlagR = false;
             ctrlFlag = true;
             Fix_T1 = Fix_T2 = 0;
@@ -3939,7 +4103,7 @@ void stateFix()
         //偏右未纠正
         if (SensorFlagL)
         {   //注意类型 
-//          Serial.println("===偏右修正中==");
+        //  Serial.println("================================================偏右修正中==");
             Fix_T2 = FixFctr_LR*(getTickTime() - Fix_T1);
             //减速修正
             setSpdA2(targetSpd - Fix_T2);
@@ -3952,7 +4116,7 @@ void stateFix()
         //偏右已纠正
         if (SensorFlagL && Sensor_R_R && Sensor_R_L && Sensor_R_M)
         {
-//          Serial.println("===偏右已修正===");
+        //  Serial.println("================================================偏右已修正===");
             SensorFlagL = false;
             ctrlFlag = true;
             Fix_T1 = Fix_T2 = 0;
@@ -4005,6 +4169,14 @@ void angleTest(){
   }
 
 }
+//缓冲区重置
+void UART_DATA_FLUSH(){
+    
+    int j = 50;
+    while(j--){
+        UART_DATABUF[j] = 0x00;
+    }
+}
 
 
 /*
@@ -4016,22 +4188,20 @@ bool get_data(){
     byte temp;
     bool temp_flag = false;
 
-    if (Serial1.available()<=0){
+    if (Serial1.available() < 0){
+        Serial.println("Not Data");
         return false;
     }
+    
 
-    while (Serial1.available()>0 && i!=50){
+    while (Serial1.available() >= 0 && i != 50){
         // 每次只读取一个字节    
         temp = Serial1.read();
-        if (temp_flag || temp == 0x23)
-        {
-            UART_DATABUF[i] = temp;
-        }
-//        Serial1.write(UART_DATABUF[i]);
-//        Serial1.write("  ");
+
+        UART_DATABUF[i] = temp;
+       
         i++;
      }
-     Serial1.flush();
      return true;
  }
 
@@ -4039,8 +4209,9 @@ bool get_data(){
 
 /*
 *数据解码
-*
+*通信协议1
 */
+/*
 bool decodes(){
     short i = 0;
 
@@ -4048,27 +4219,43 @@ bool decodes(){
     while (UART_DATABUF[i] != 36 && i < 51){
         
         
-        //解码#a123321$
-        if (UART_DATABUF[i] == UART_DECODE[0] && UART_DATABUF[i+7] == 36){
+        //解码# a123321 $
+        if (UART_DATABUF[i] == 0x23 && UART_DATABUF[i+8] == 0x24){
             //confmCode:a
+
             decode_a(i);//数据解码存储
             
+
+            // Serial.println("!!!!!!!!!!!!!!!!!!!");
+            // Serial.println(UART_DATABUF[i]);
+            // Serial.println(UART_DATABUF[i+1]);
+            // Serial.println(UART_DATABUF[i+2]);
+            // Serial.println(UART_DATABUF[i+3]);
+            // Serial.println(UART_DATABUF[i+4]);
+            // Serial.println(UART_DATABUF[i+5]);
+            // Serial.println(UART_DATABUF[i+6]);
+            // Serial.println(UART_DATABUF[i+7]);
+            // Serial.println("EEEEEEEEEEEEEEEEEEE");
+            //缓冲区重置
+            UART_DATA_FLUSH();
             return false;
 
         }
-        //          b$(扫描下一个)             b@&(+/-)xx&(+/-)yy$(抓取当前)            b&(+/-)xx&(+/-)yy&xxx$(抓取当前并规划)
-        else if (UART_DATABUF[i] == UART_DECODE[1]){
+        //          #b$(扫描下一个)             #b@&(+/-)xx&(+/-)yy$(抓取当前)            #b&(+/-)xx&(+/-)yy&xxx$(抓取当前并规划)
+        
+        //#b.................
+        else if (UART_DATABUF[i] == 0x23 && UART_DATABUF[i+1] == 0x62){
             
-            //扫描下一个 36 '$'
-            if (UART_DATABUF[i+1] == 36){
+            //扫描下一个 0x24 '$'
+            if (UART_DATABUF[i+2] == 0x24){
                 //切换状态,车辆移动至下一格子
                 //不可抓取
                 UART_DELTA[2] = 0;
                 return false;
             }
 
-            //抓取当前的 64 '@'
-            if (UART_DATABUF[i+1] == 64 && UART_DATABUF[i+10] == 36){
+            //抓取当前的 0x40 '@'~$
+            if (UART_DATABUF[i+2] == 0x40 && UART_DATABUF[i+11] == 0x24){
                 //解码,将数据存放至UART_DELTA中
                 //b@& - 1 2 & + 2 2$
                 decode_b(i);
@@ -4078,7 +4265,7 @@ bool decodes(){
 
             }
             //抓取并存放路径规划
-            if (UART_DATABUF[i+1] == 38 && UART_DATABUF[i+13] == 36){
+            if (UART_DATABUF[i+2] == 0x26 && UART_DATABUF[i+14] == 0x24){
                 //解码存放
                 decode_b(i);
                 UART_DELTA[2] = 1;
@@ -4110,6 +4297,73 @@ bool decodes(){
     }
     return true;
 }
+*/
+
+/*
+*数据解码
+*openmv控制机械臂抓取(通信协议2)
+*/
+bool decodes(){
+    short i = 0;
+    
+
+     
+    while (i < 51){
+        
+        
+        //解码# a123321 $
+        if (UART_DATABUF[i] == 35 && UART_DATABUF[i+1] == 97){
+            //confmCode:a
+
+            decode_a(i);//数据解码存储
+            
+
+            // Serial.println("!!!!!!!!!!!!!!!!!!!");
+            // Serial.println(UART_DATABUF[i]);
+            // Serial.println(UART_DATABUF[i+1]);
+            // Serial.println(UART_DATABUF[i+2]);
+            // Serial.println(UART_DATABUF[i+3]);
+            // Serial.println(UART_DATABUF[i+4]);
+            // Serial.println(UART_DATABUF[i+5]);
+            // Serial.println(UART_DATABUF[i+6]);
+            // Serial.println(UART_DATABUF[i+7]);
+            // Serial.println("EEEEEEEEEEEEEEEEEEE");
+            //缓冲区重置
+            UART_DATA_FLUSH();
+            return false;
+
+        }
+        //          #b$(扫描下一个)           #bxxx$(规划)
+        
+        //#b.................
+        if (UART_DATABUF[i] == 0x23 && UART_DATABUF[i+1] == 0x62){
+            
+            //扫描下一个 0x24 '$'
+            if (UART_DATABUF[i+2] == 0x24){
+                //切换状态,车辆移动至下一格子
+                //不可抓取
+                UART_DELTA[2] = 0;
+                UART_DATA_FLUSH();
+                return false;
+            }
+            //存放路径规划
+            if (UART_DATABUF[i+1] == 0x62 && UART_DATABUF[i+5] == 0x24){
+                //解码存放
+                decode_b(i);
+                // UART_DELTA[2] = 1;
+                //更新路径
+                UART_DATA_FLUSH();
+                return false;
+            }
+            //confmCode:b
+
+        }
+
+        i++;
+    }
+    
+    return true;
+}
 
 
 
@@ -4120,12 +4374,13 @@ void reqs(char* req_code,char* resp_code){
 
     while (uart_flag)
     {
-        Serial1.flush();
+        // Serial1.flush();
 
         Serial1.write(req_code,3);
+        Serial.println("REQ_SCAN");
 
-        // Serial1.write("#B$");
-        //没有收到数据就跳出
+        
+        //没有收到数据进行下一次循环
         if (!get_data()){
             blbl(5);
             continue;
@@ -4135,18 +4390,32 @@ void reqs(char* req_code,char* resp_code){
         uart_flag = respServices(decodes(),resp_code);
         
     }
+    Serial.println("REQ_SACN_DONE");
 
 }
 
 //任务码本地存储
 void decode_a(short i){
-    i++;
-    int j = 0;
-    while (UART_DATABUF[i]!=36){
-      UART_TARGET[j] = UART_DATABUF[i];
-      i++;
-      j++;
-    }
+    //#a123321$
+    UART_TARGET[0] = byte_decode(UART_DATABUF[i+2]);
+    UART_TARGET[1] = byte_decode(UART_DATABUF[i+3]);
+    UART_TARGET[2] = byte_decode(UART_DATABUF[i+4]);
+    UART_TARGET[3] = byte_decode(UART_DATABUF[i+5]);
+    UART_TARGET[4] = byte_decode(UART_DATABUF[i+6]);
+    UART_TARGET[5] = byte_decode(UART_DATABUF[i+7]);
+
+
+
+    Serial.println("---------");
+    Serial.println(UART_TARGET[0]);
+    Serial.println(UART_TARGET[1]);
+    Serial.println(UART_TARGET[2]);
+
+    Serial.println(UART_TARGET[3]);
+    Serial.println(UART_TARGET[4]);
+    Serial.println(UART_TARGET[5]);
+    Serial.println("---------");
+    
 
     // delay(100000);
     // delay(2);
@@ -4163,17 +4432,20 @@ bool respServices(bool flag,char* resp_code){
             i++;
             //中断服务加入特殊情况,如果收到openmv特殊请求,重新运行请求服务
         }
+
+        // Serial.println("respSer1");
         
 
         return flag;
     }
+    // Serial.println("respSer2");
     
     return flag;
 }
 
 
     
-
+/*
 //数据解码服务
 void decode_b(int i){
 
@@ -4197,15 +4469,15 @@ void decode_b(int i){
         
         if (UART_DATABUF[i] == 43 || UART_DATABUF[i] == 45){
             //0~9
-            if (UART_DATABUF[i+1] > 47 && UART_DATABUF[i+1] < 58){
+            if (UART_DATABUF[i+1] >= 47 && UART_DATABUF[i+1] <= 58){
 
                 if (code_count == 1){
                     
-                    UART_DELTA[0] = UART_DATABUF[i] == 43?char_decode(UART_DATABUF[i+1]) * 10 + char_decode(UART_DATABUF[i+2]):char_decode(UART_DATABUF[i+1]) * -10 + -1 * char_decode(UART_DATABUF[i+2]);
+                    UART_DELTA[0] = UART_DATABUF[i] == 43?byte_decode(UART_DATABUF[i+1]) * 10 + byte_decode(UART_DATABUF[i+2]):byte_decode(UART_DATABUF[i+1]) * -10 + -1 * byte_decode(UART_DATABUF[i+2]);
                     continue;
                 }
-                if(code_count ==2){
-                    UART_DELTA[1] = UART_DATABUF[i] == 43?char_decode(UART_DATABUF[i+1]) * 10 + char_decode(UART_DATABUF[i+2]):char_decode(UART_DATABUF[i+1]) * (-10) + -1 * char_decode(UART_DATABUF[i+2]);
+                if(code_count == 2){
+                    UART_DELTA[1] = UART_DATABUF[i] == 43?byte_decode(UART_DATABUF[i+1]) * 10 + byte_decode(UART_DATABUF[i+2]):byte_decode(UART_DATABUF[i+1]) * (-10) + -1 * byte_decode(UART_DATABUF[i+2]);
                     UART_DELTA[2] = 1;
                     continue;
                 }
@@ -4234,49 +4506,60 @@ void decode_b(int i){
 
     }
 }
+*/
 
+//数据解码，openmv控制机械臂
+void decode_b(int i){
+
+    // #bxxx$
+    UART_PLAN[0] = byte_decode(UART_DATABUF[i+2]);
+    UART_PLAN[0] = byte_decode(UART_DATABUF[i+3]);
+    UART_PLAN[0] = byte_decode(UART_DATABUF[i+4]);
+
+}
 
 //数字解码,返回数字
-short char_decode(byte UART_BYTE_DATA){
+short byte_decode(byte UART_BYTE_DATA){
     switch (UART_BYTE_DATA)
     {
-    case 48:
+    case 0x30:
         return 0;
         break;
-    case 49:
+    case 0x31:
         return 1;
         break;
-    case 50:
+    case 0x32:
         return 2;
         break;
-    case 51:
+    case 0x33:
         return 3;
         break;
-    case 52:
+    case 0x34:
         return 4;
         break;
-    case 53:
+    case 0x35:
         return 5;
         break;
-    case 54:
+    case 0x36:
         return 6;
         break;
-    case 55:
+    case 0x37:
         return 7;
         break;
-    case 56:
+    case 0x38:
         return 8;
         break;
 
-    case 57:
+    case 0x39:
         return 9;
-        break;
-    
-    default:
-        return 10;
         break;
     }
 }
+
+// char* int_char(int x){
+//     switch
+// }
+
 
 /*
  * 外部中断函数isr1~4
