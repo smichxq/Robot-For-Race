@@ -429,17 +429,19 @@ void setup() {
     //     }
     //     Serial.println("<><><><><><><><><><><><><><><><><<><<><<>");
     //     mps = mps->next;
+    //     mp = mps->head;
     // }
+    // delay(2000000);
 
 //  IntServiceInit();
   //前后 A2 +3 B2 +3
   //左 A1 +7.2 B1 +4 B2 +7.2
   //右 A1 +7.3 B1 +4.9 B2 +10.7
-//   motorInit();
-//   setSpdA1(targetSpd);
-//   setSpdA2(targetSpd);
-//   setSpdB1(targetSpd);
-//   setSpdB2(targetSpd);
+  motorInit();
+  setSpdA1(targetSpd);
+  setSpdA2(targetSpd);
+  setSpdB1(targetSpd);
+  setSpdB2(targetSpd);
 
 //   BTCtrl();
   Serial.println("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
@@ -460,6 +462,10 @@ void loop()
     // pathPlan();
 //   Serial.println(currentStates);
 // currentStates = goStraight;
+
+    // if (mp->C){
+    //     Serial.println("STP!!!!!");
+    // }
 
   
   if (!ctrl_flag){
@@ -1809,6 +1815,7 @@ void motorB2(){
 void directions(){
     
     short dirct = currentStates;
+    int stpCount = 50;
 
 
 
@@ -2168,10 +2175,36 @@ void directions(){
         motorB1();
         motorB2();
 
-      motorA1PNS(S);
-      motorA2PNS(S);
-      motorB1PNS(S);
-      motorB2PNS(S);
+        motorA1PNS(S);
+        motorA2PNS(S);
+        motorB1PNS(S);
+        motorB2PNS(S);
+
+        // while(stpCount--){
+
+
+        //     motorA1PNS(S);
+        //     motorA2PNS(S);
+        //     motorB1PNS(S);
+        //     motorB2PNS(S);
+
+        //     motorA1PNS(N);
+        //     motorA2PNS(N);
+        //     motorB1PNS(N);
+        //     motorB2PNS(N);
+
+        //     motorA1PNS(P);
+        //     motorA2PNS(P);
+        //     motorB1PNS(P);
+        //     motorB2PNS(P);
+
+        // }
+
+
+        
+
+
+
 
 
     }
@@ -2309,30 +2342,30 @@ missions* missionsInit(){
 //   mission missionAry[14];
 
     missions* p = NULL;
-    missions* head = NULL;
+    missions* h = NULL;
 
 
 
   //任务序列
 
-    head = p = (missions*)malloc(sizeof(missions));
+    h = p = (missions*)malloc(sizeof(missions));
 
   //扫码
-    head->head = S_Code();
-    head->flag = true;
+    h->head = S_Code();
+    h->flag = true;
 
-    p = (missions*)malloc(sizeof(mission));
+    p = (missions*)malloc(sizeof(missions));
 
   //原料区1
     p->head = T_Obj();
     p->flag = true;
 
-    head->next = p;
+    h->next = p;
     p->next = NULL;
 
 
 
-    return head;
+    return h;
 
 
 //   //粗加工区1
@@ -2437,11 +2470,9 @@ void pathPlan()
     if (mp == NULL){
         Listflag = false;
         currentStates = stp;
-
-
         //整体规划启用
-        mps = mps->next;
-        mp = mps->head;
+        // mps = mps->next;
+        // mp = mps->head;
     }
   }
   
@@ -2485,11 +2516,13 @@ void pathPlan()
        mid_line_flag = false;
     }
     //停止
-    if (mp->C && Listflag)
+    if (mp->C)
     {
         currentStates = stp;
          micro_line_flag = false;
          mid_line_flag = false;
+        //停止后可能会一侧越线所以提前置位
+         flagA = true;
     }
 
 
@@ -2563,9 +2596,13 @@ void pathPlan()
     {
       flagA = true;
     }
+
     if (Sensor_B_M == 0 && flagA)
+    
     {
         //tick-mpwm表
+        
+
         flagB = true;
 
     }
@@ -2595,8 +2632,11 @@ void pathPlan()
     {
       flagA = true;
     }
+
     if (Sensor_F_M == 0 && flagA)
+    // if (Sensor_F_M == 0)
     {
+        // flagA = true;//测试后删掉
         flagB = true;
 
     }
@@ -2626,8 +2666,11 @@ void pathPlan()
     {
       flagA = true;
     }
+
     if (Sensor_R_M == 0 && flagA)
+    // if (Sensor_R_M == 0)
     {
+        // flagA = true;//测试后删掉
         flagB = true;
     }
     if (flagB)
@@ -2656,8 +2699,9 @@ void pathPlan()
     {
       flagA = true;
     }
-    if (Sensor_L_M == 0 && flagA)
+    if (Sensor_L_M == 0)
     {
+        // flagA = true;//测试后删掉
         flagB =true;
     }
 
@@ -2764,7 +2808,7 @@ void pathPlan()
 /*===========================任务规划==================================*/
 
     //任务模式
-    if (currentStates == stp && mp->M){
+    if (mp->C && mp->M){
         // if (1){
         //扫码请求
         // Serial.println("mission Mode");
@@ -2787,9 +2831,9 @@ void pathPlan()
             myse.runActionGroup(2,1);
             delay(2000);
             //开始下一个任务序列
-            // flagA = flagD = true;//切换序列只用该方法，禁止使用任务指针！！！
-            // mps = mps->next;
-            // mp = mps->head;
+            // flagA = flagD = true;//单个任务序列启用
+            mps = mps->next;
+            mp = mps->head;
 
 
         }   
@@ -2803,11 +2847,13 @@ void pathPlan()
 
         //抓取请求
         if ( !(mp->M_1) && !(mp->M_2) && mp->M_3 ){
+            Serial.println("请求抓取");
 
             //抓取请求
             myse.runActionGroup(3,1);
 
             reqs("#B$","#Bb$");
+            flagA = flagD = true;//单个任务序列启用
             
             //最新：Openmv发送误差后即可移动！！！！！！！！！！！！！！！！！！！
             
@@ -2815,17 +2861,17 @@ void pathPlan()
 
             //抓取当前, UART_DELTA[0] UART_DELTA[1] UART_DELTA[2]=1
 
-            if (UART_DELTA[2]){
-                // ctrl_grab_servo();
-                flagA = flagD = true;
-                delay(1);
-            }
+            // if (UART_DELTA[2]){
+            //     // ctrl_grab_servo();
+            //     flagA = flagD = true;
+            //     delay(1);
+            // }
 
             //移动到下一个
-            else{
-                flagA = flagD = true;
+            // else{
+            //     flagA = flagD = true;
                 
-            }
+            // }
 
     }
     
@@ -2905,7 +2951,7 @@ mission* S_Code(){
 
 //物料区
 mission* T_Obj(){
-  mission demo[8];
+  mission demo[5];
   //Front
   demo[0].A = false;
   demo[0].B = false;
@@ -2930,58 +2976,45 @@ mission* T_Obj(){
 
 
 
-  //Front
+  //Stop-REQ-Grab
   demo[2].A = false;
   demo[2].B = false;
-  demo[2].C = false;
+  demo[2].C = true;
   demo[2].D = false;
   demo[2].E = false;
-  demo[2].M = false;
+  demo[2].M = true;
   demo[2].M_1 = false;
   demo[2].M_2 = false;
-  demo[2].M_3 = false;
+  demo[2].M_3 = true;
 
-
-
-  //Stop-REQ-Grub
-  demo[3].A = false;
-  demo[3].B = false;
-  demo[3].C = true;
-  demo[3].D = false;
-  demo[3].E = false;
-  demo[3].M = true;
-  demo[3].M_1 = false;
-  demo[3].M_2 = false;
-  demo[3].M_3 = true;
 
 
   //Front-Mid-Line
-  demo[4].A = false;
-  demo[4].B = false;
-  demo[4].C = false;
-  demo[4].D = false;
-  demo[4].E = true;
-  demo[4].M = false;
-  demo[4].M_1 = false;
-  demo[4].M_2 = false;
-  demo[4].M_3 = false;
-
-
+  demo[3].A = false;
+  demo[3].B = false;
+  demo[3].C = false;
+  demo[3].D = false;
+  demo[3].E = true;
+  demo[3].M = false;
+  demo[3].M_1 = false;
+  demo[3].M_2 = false;
+  demo[3].M_3 = false;
 
 
   //Stop-REQ-Grub
-  demo[5].A = false;
-  demo[5].B = false;
-  demo[5].C = true;
-  demo[5].D = false;
-  demo[5].E = false;
-  demo[5].M = true;
-  demo[5].M_1 = false;
-  demo[5].M_2 = false;
-  demo[5].M_3 = true;
+  demo[4].A = false;
+  demo[4].B = false;
+  demo[4].C = true;
+  demo[4].D = false;
+  demo[4].E = false;
+  demo[4].M = true;
+  demo[4].M_1 = false;
+  demo[4].M_2 = false;
+  demo[4].M_3 = true;
 
 
-  return createMissionList(6,demo);
+
+  return createMissionList(5,demo);
   
 }
 
@@ -4344,16 +4377,16 @@ bool decodes(){
             decode_a(i);//数据解码存储
             
 
-            Serial.println("!!!!!!!!!!!!!!!!!!!");
-            Serial.println(UART_DATABUF[i]);
-            Serial.println(UART_DATABUF[i+1]);
-            Serial.println(UART_DATABUF[i+2]);
-            Serial.println(UART_DATABUF[i+3]);
-            Serial.println(UART_DATABUF[i+4]);
-            Serial.println(UART_DATABUF[i+5]);
-            Serial.println(UART_DATABUF[i+6]);
-            Serial.println(UART_DATABUF[i+7]);
-            Serial.println("EEEEEEEEEEEEEEEEEEE");
+            // Serial.println("!!!!!!!!!!!!!!!!!!!");
+            // Serial.println(UART_DATABUF[i]);
+            // Serial.println(UART_DATABUF[i+1]);
+            // Serial.println(UART_DATABUF[i+2]);
+            // Serial.println(UART_DATABUF[i+3]);
+            // Serial.println(UART_DATABUF[i+4]);
+            // Serial.println(UART_DATABUF[i+5]);
+            // Serial.println(UART_DATABUF[i+6]);
+            // Serial.println(UART_DATABUF[i+7]);
+            // Serial.println("EEEEEEEEEEEEEEEEEEE");
             //缓冲区重置
             UART_DATA_FLUSH();
             return false;
@@ -4362,10 +4395,10 @@ bool decodes(){
         //          #b$(扫描下一个)           #bxxx$(规划)
         
         //#b.................
-        if (UART_DATABUF[i] == 0x23 && UART_DATABUF[i+1] == 0x62){
+        if (UART_DATABUF[i] == 35 && UART_DATABUF[i+1] == 98 && (UART_DATABUF[i+2] == 36 || UART_DATABUF[i+5] == 36)){
             
-            //扫描下一个 0x24 '$'
-            if (UART_DATABUF[i+2] == 0x24){
+            //扫描下一个 36 '$'
+            if (UART_DATABUF[i+2] == 36){
                 //切换状态,车辆移动至下一格子
                 //不可抓取
                 UART_DELTA[2] = 0;
@@ -4373,7 +4406,7 @@ bool decodes(){
                 return false;
             }
             //存放路径规划
-            if (UART_DATABUF[i+1] == 0x62 && UART_DATABUF[i+5] == 0x24){
+            if (UART_DATABUF[i+1] == 98 && UART_DATABUF[i+5] == 36){
                 //解码存放
                 decode_b(i);
                 // UART_DELTA[2] = 1;
@@ -4390,6 +4423,7 @@ bool decodes(){
         
     }
     Serial.println("decoding error");
+    UART_DATA_FLUSH();
     
     return true;
 }
