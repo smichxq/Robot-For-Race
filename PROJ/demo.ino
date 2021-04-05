@@ -256,8 +256,8 @@ byte UART_DATABUF[50];//数据缓冲区
 byte UART_DECODE[8] = {0x61,0x62,0x63,0x64,0x65,0x66,0x67,0x68};//请求服务确认码
 
 int UART_TARGET[6] = {0,0,0,0,0,0};//任务码
-char* CODE1;
-char* CODE2;
+char* CODE1 = NULL;
+char* CODE2 = NULL;
 
 int UART_DELTA[3] = {0,0,0};//当前误差
 
@@ -394,14 +394,17 @@ void setup() {
     LEDInit();
     LEDCtrl("Spark",0,20,5,"krapS",0,60,5);
     sensorInit();
-    // mps = missionsInit();
-    // mp = mps->head;
+    mps = missionsInit();
+    mp = mps->head;
 
 
-    mp = scanTest();
+    // mp = scanTest();
     Serial.begin(115200);
+
     //openmv通信
-    Serial1.begin(19200);
+    Serial2.begin(19200);
+
+
     //机械臂通信
     Serial3.begin(9600);
     //机械臂初始化
@@ -432,11 +435,11 @@ void setup() {
   //前后 A2 +3 B2 +3
   //左 A1 +7.2 B1 +4 B2 +7.2
   //右 A1 +7.3 B1 +4.9 B2 +10.7
-  motorInit();
-  setSpdA1(targetSpd);
-  setSpdA2(targetSpd);
-  setSpdB1(targetSpd);
-  setSpdB2(targetSpd);
+//   motorInit();
+//   setSpdA1(targetSpd);
+//   setSpdA2(targetSpd);
+//   setSpdB1(targetSpd);
+//   setSpdB2(targetSpd);
 
 //   BTCtrl();
   Serial.println("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
@@ -451,7 +454,7 @@ void loop()
   先使用路径规划pathPlan
   再命令电机移动directions
   */
-    // BTCtrl();
+    BTCtrl();
     
     // delay(1000);
     // pathPlan();
@@ -459,19 +462,15 @@ void loop()
 // currentStates = goStraight;
 
   
-//   if (!ctrl_flag){
+  if (!ctrl_flag){
 
   pathPlan();
   directions();
 
   stateFix();
   
-  if(UART_TARGET[0] && onef){
-      LEDCtrl(CODE1,0,20,4,CODE2,0,60,4);
-      onef = false;
-  }
     
-//   }
+  }
 
 
 
@@ -522,31 +521,47 @@ void LEDCtrl(char* MISSION_CODE_1, short x_1 ,short y_1, short size_1 ,char* MIS
   
 //   delay(3000);
 //   while(1);
-    Serial.println("LED1===================");
-    Serial.println(*MISSION_CODE_1);
-    MISSION_CODE_1++;
-    Serial.println(*MISSION_CODE_1);
-    MISSION_CODE_1++;
-    Serial.println(*MISSION_CODE_1);
-    MISSION_CODE_1++;
-    Serial.println(*MISSION_CODE_1);
-    MISSION_CODE_1++;
-    Serial.println(*MISSION_CODE_1);
-    Serial.println("LED1===================");
+    // Serial.println("LED1===================");
+    // delay(20);
+    // Serial.println(*MISSION_CODE_1);
+    // delay(20);
+    // MISSION_CODE_1++;
+    // Serial.println(*MISSION_CODE_1);
+    // delay(20);
+    // MISSION_CODE_1++;
+    // Serial.println(*MISSION_CODE_1);
+    // delay(20);
+    // MISSION_CODE_1++;
+    // Serial.println(*MISSION_CODE_1);
+    // delay(20);
+    // MISSION_CODE_1++;
+    // Serial.println(*MISSION_CODE_1);
+    // delay(20);
+    // Serial.println("LED1===================");
+    // delay(20);
 
-    Serial.println("LED2===================");
-    Serial.println(*MISSION_CODE_2);
-    MISSION_CODE_2++;
-    Serial.println(*MISSION_CODE_2);
-    MISSION_CODE_2++;
-    Serial.println(*MISSION_CODE_2);
-    MISSION_CODE_2++;
-    Serial.println(*MISSION_CODE_2);
-    MISSION_CODE_2++;
-    Serial.println(*MISSION_CODE_2);
-    Serial.println("LED2===================");
+    // Serial.println("LED2===================");
+    // delay(20);
+    // Serial.println(*MISSION_CODE_2);
+    // delay(20);
+    // MISSION_CODE_2++;
+    // Serial.println(*MISSION_CODE_2);
+    // delay(20);
+    // MISSION_CODE_2++;
+    // Serial.println(*MISSION_CODE_2);
+    // delay(20);
+    // MISSION_CODE_2++;
+    // Serial.println(*MISSION_CODE_2);
+    // delay(20);
+    // MISSION_CODE_2++;
+    // Serial.println(*MISSION_CODE_2);
+    // delay(20);
+    // Serial.println("LED2===================");
+    // delay(20);
   
 }
+
+
 
 
 /*
@@ -1339,9 +1354,13 @@ void blbl(int j) {
 * int -> char
 */
 void getCode(){
+    char* tempCode1 = NULL;
+    char* tempCode2 = NULL;
 
-    CODE1 = (char*)malloc(sizeof(5));
-    Serial.println("---------------");
+    
+
+    tempCode1 = CODE1 = (char*)malloc(4*sizeof(char));
+    Serial.println("local Saving");
 
     itoa(UART_TARGET[0],CODE1,10);
     Serial.println(*CODE1);
@@ -1358,16 +1377,15 @@ void getCode(){
     Serial.println(*CODE1);
 
     CODE1++;
-    *CODE1 = "\\";
-
-    CODE1++;
-    *CODE1 = "0";
+    *CODE1 = '\0';
 
 
 
 
 
-    CODE2 = (char*)malloc(sizeof(5));
+
+
+    tempCode2 = CODE2 = (char*)malloc(4*sizeof(char));
     
 
     itoa(UART_TARGET[3],CODE2,10);
@@ -1379,14 +1397,17 @@ void getCode(){
     itoa(UART_TARGET[5],CODE2,10);
     Serial.println(*CODE2);
     CODE2++;
-    *CODE2 = "\\";
+    *CODE2 = '\0';
 
-    CODE2++;
-    *CODE2 = "0";
 
-    CODE1 -= 3;
-    CODE2 -= 3;
-    Serial.println("localSaving......done!!");
+
+    CODE1 = tempCode1;
+    CODE2 = tempCode2;
+
+    
+
+    LEDCtrl(tempCode1,0,20,8,tempCode2,0,80,8);
+    // Serial.println("local Saving"");
 }
 
 
@@ -2419,8 +2440,8 @@ void pathPlan()
 
 
         //整体规划启用
-        // mps = mps->next;
-        // mp = mps->head;
+        mps = mps->next;
+        mp = mps->head;
     }
   }
   
@@ -2744,8 +2765,11 @@ void pathPlan()
 
     //任务模式
     if (currentStates == stp && mp->M){
+        // if (1){
         //扫码请求
+        // Serial.println("mission Mode");
         if ( !(mp->M_1) && !(mp->M_2) && !(mp->M_3) ){
+            // if (1){
             //机械臂动作
             Serial.println("ArmAct");
             // int i = 22500;
@@ -4188,20 +4212,21 @@ bool get_data(){
     byte temp;
     bool temp_flag = false;
 
-    if (Serial1.available() < 0){
+    if (Serial2.available() < 0){
         Serial.println("Not Data");
         return false;
     }
     
 
-    while (Serial1.available() >= 0 && i != 50){
+    while (Serial2.available() >= 0 && i != 50){
         // 每次只读取一个字节    
-        temp = Serial1.read();
+        temp = Serial2.read();
 
         UART_DATABUF[i] = temp;
        
         i++;
      }
+     Serial.println("getdata");
      return true;
  }
 
@@ -4304,30 +4329,31 @@ bool decodes(){
 *openmv控制机械臂抓取(通信协议2)
 */
 bool decodes(){
-    short i = 0;
+    int i = 0;
     
 
-     
-    while (i < 51){
+     Serial.println("enter decode");
+    while (UART_DATABUF[i] != 36 && i < 51){
+        
         
         
         //解码# a123321 $
-        if (UART_DATABUF[i] == 35 && UART_DATABUF[i+1] == 97){
+        if (UART_DATABUF[i] == 35 && UART_DATABUF[i+1] == 97 &&  UART_DATABUF[i+8] == 36){
             //confmCode:a
 
             decode_a(i);//数据解码存储
             
 
-            // Serial.println("!!!!!!!!!!!!!!!!!!!");
-            // Serial.println(UART_DATABUF[i]);
-            // Serial.println(UART_DATABUF[i+1]);
-            // Serial.println(UART_DATABUF[i+2]);
-            // Serial.println(UART_DATABUF[i+3]);
-            // Serial.println(UART_DATABUF[i+4]);
-            // Serial.println(UART_DATABUF[i+5]);
-            // Serial.println(UART_DATABUF[i+6]);
-            // Serial.println(UART_DATABUF[i+7]);
-            // Serial.println("EEEEEEEEEEEEEEEEEEE");
+            Serial.println("!!!!!!!!!!!!!!!!!!!");
+            Serial.println(UART_DATABUF[i]);
+            Serial.println(UART_DATABUF[i+1]);
+            Serial.println(UART_DATABUF[i+2]);
+            Serial.println(UART_DATABUF[i+3]);
+            Serial.println(UART_DATABUF[i+4]);
+            Serial.println(UART_DATABUF[i+5]);
+            Serial.println(UART_DATABUF[i+6]);
+            Serial.println(UART_DATABUF[i+7]);
+            Serial.println("EEEEEEEEEEEEEEEEEEE");
             //缓冲区重置
             UART_DATA_FLUSH();
             return false;
@@ -4360,7 +4386,10 @@ bool decodes(){
         }
 
         i++;
+
+        
     }
+    Serial.println("decoding error");
     
     return true;
 }
@@ -4374,10 +4403,12 @@ void reqs(char* req_code,char* resp_code){
 
     while (uart_flag)
     {
-        // Serial1.flush();
+        // Serial2.flush();
 
-        Serial1.write(req_code,3);
+        Serial2.write(req_code,3);
+        delay(2);
         Serial.println("REQ_SCAN");
+        delay(2);
 
         
         //没有收到数据进行下一次循环
@@ -4387,7 +4418,8 @@ void reqs(char* req_code,char* resp_code){
         }
         //blbl(100);
         //请求成功,跳出循环
-        uart_flag = respServices(decodes(),resp_code);
+        bool tempFlag = decodes();
+        uart_flag = respServices(tempFlag,resp_code);
         
     }
     Serial.println("REQ_SACN_DONE");
@@ -4428,17 +4460,17 @@ bool respServices(bool flag,char* resp_code){
     if(!flag){
         while (i < 20)
         {      
-            Serial1.write(resp_code,4);
+            Serial2.write(resp_code,4);
             i++;
             //中断服务加入特殊情况,如果收到openmv特殊请求,重新运行请求服务
         }
 
-        // Serial.println("respSer1");
+        Serial.println("respSer1");
         
 
         return flag;
     }
-    // Serial.println("respSer2");
+    Serial.println("respSer2");
     
     return flag;
 }
@@ -4661,6 +4693,29 @@ long int getTickTime(){
     return millis();
 }
 
+char* int_char(int A){
+    char* p = (char*)malloc(sizeof(1));
+    switch (A)
+    {
+    case 1:
+        *p = "1";
+        break;
+
+    case 2:
+        *p = "2";
+        
+        break;
+
+    case 3:
+        *p = "3";
+        
+        break;
+    
+    }
+
+    return p;
+
+}
 
 
 /*
