@@ -121,7 +121,7 @@ short Back_FixB2 = 4.2;
 #define tickThreshold 5
 
 //速度
-int targetSpd = 100;
+int targetSpd = 80;
 
 //取样周期
 #define smpT 5
@@ -264,8 +264,18 @@ int UART_DELTA[3] = {0,0,0};//当前误差
 int UART_DELTA_VALUE[3];
 
 int UART_PLAN[3] = {0,0,0};//规划
+
+
+//服务标记位
+bool UART_SERVICE_A_FLAG = true;
+bool UART_SERVICE_B_FLAG = true;
+bool UART_SERVICE_C_FLAG = true;
+bool UART_SERVICE_D_FLAG = true;
+
 /*===================================================UART===================================================*/
 
+
+//蓝牙缓冲区
 byte BTData[50];
 
 
@@ -384,36 +394,36 @@ bool ctrl_flag = true;
 
 bool onef = true;
 
+short grab_plan_count = 0;
+
 
 
 LobotServoController myse(Serial3);//舵机控制
 
 void setup() {
-    delay(200);
+    delay(20);
     //显示屏初始化
     LEDInit();
-    LEDCtrl("Spark",0,20,5,"krapS",0,60,5);
+    LEDCtrl("Spark",0,20,5,"krapS",0,90,5);
     sensorInit();
+
+    // Serial.begin(9600);
+    // Serial.println("Datatrans Ready!");
+
     mps = missionsInit();
     mp = mps->head;
 
-
-    // mp = scanTest();
-    Serial.begin(115200);
-
-    //openmv通信
-    Serial2.begin(19200);
-
-
-    //机械臂通信
-    Serial3.begin(9600);
-    //机械臂初始化
+    // mp = T_Obj();
     
-    myse.runActionGroup(0,1);
-    
+    // Serial.println("Datatrans Ready!");
 
-    // while(mps){
+    // // while(mps){
     //     while(mp){
+
+    //         if (!mp->next){
+
+    //             break;
+    //         }
     //         Serial.println(mp->A,BIN);
     //         Serial.println(mp->B,BIN);
     //         Serial.println(mp->C,BIN);
@@ -427,10 +437,53 @@ void setup() {
     //         mp = mp->next;
     //         delay(1111);
     //     }
+
+    //     dynamicGrabPlan();
+    //     while(mp){
+
+    //         Serial.println(mp->A,BIN);
+    //         Serial.println(mp->B,BIN);
+    //         Serial.println(mp->C,BIN);
+    //         Serial.println(mp->D,BIN);
+    //         Serial.println(mp->E,BIN);
+    //         Serial.println(mp->M,BIN);
+    //         Serial.println(mp->M_1,BIN);
+    //         Serial.println(mp->M_2,BIN);
+    //         Serial.println(mp->M_3,BIN);
+    //         Serial.println("===========================");
+    //         mp = mp->next;
+
+    //     }
+    //     Serial.println("Dnoe");
+        
     //     Serial.println("<><><><><><><><><><><><><><><><><<><<><<>");
     //     mps = mps->next;
     //     mp = mps->head;
     // }
+
+    
+
+    
+
+    // Serial.println("Datatrans Done!");
+
+
+    // mp = scanTest();
+    
+    //BT
+    Serial.begin(115200);
+    //openmv通信
+    Serial2.begin(19200);
+
+
+    //机械臂通信
+    Serial3.begin(9600);
+    //机械臂初始化
+    //openmv控制
+    myse.runActionGroup(0,1);
+    
+
+
     // delay(2000000);
 
 //  IntServiceInit();
@@ -442,6 +495,41 @@ void setup() {
   setSpdA2(targetSpd);
   setSpdB1(targetSpd);
   setSpdB2(targetSpd);
+
+
+
+//   currentStates = goStraight;
+//   directions();
+//   delay(1000);
+
+//   currentStates = stp;
+//   directions();
+
+//   currentStates = goBack;
+//   directions();
+//   delay(1000);
+
+//   currentStates = stp;
+//   directions();
+//   delay(1000);
+
+//   currentStates = Left;
+//   directions();
+//   delay(1000);
+
+//   currentStates = stp;
+//   directions();
+//   delay(1000);
+
+//   currentStates = Right;
+//   directions();
+//   delay(1000);
+
+//   currentStates = stp;
+//   directions();
+//   delay(1000);
+
+
 
 //   BTCtrl();
   Serial.println("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
@@ -468,15 +556,15 @@ void loop()
     // }
 
   
-  if (!ctrl_flag){
+    if (!ctrl_flag){
 
-  pathPlan();
-  directions();
+    pathPlan();
+    directions();
 
-  stateFix();
-  
+    stateFix();
     
-  }
+        
+    }
 
 
 
@@ -1206,7 +1294,8 @@ mission* test(){
 }
 //蓝牙控制
 void BTCtrl(){
-    Serial.println("standby!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    // Serial.println("standby!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    delay(2);
     int i = 0;
     if (Serial.available()<0){
         return;
@@ -1312,7 +1401,7 @@ void BTCtrl(){
             //ot(outline)
             if (BTData[j]==111 && BTData[j+1]==116)
             {
-                Serial.println("outline!!!!!!!!!!!!!!!!!");
+                // Serial.println("outline!!!!!!!!!!!!!!!!!");
                 ctrl_flag =false;
                 return;
                 
@@ -1808,9 +1897,10 @@ void motorB2(){
 * Left 左平移
 * Right 右平移
 *
-* 参数为方向,速度
+*
 * 目前只有四个方向
-* 后期增加其他方向
+* 读取当前状态-控制电机
+* 
 */
 void directions(){
     
@@ -1850,8 +1940,8 @@ void directions(){
         while (true){
 
 
-            Sensor_L_M = digitalRead(SensorPinL_2);
-            Sensor_R_M = digitalRead(SensorPinR_2);
+            
+            Sensor_F_M = digitalRead(SensorPinF_2);
 
 
             motorA1PNS(P);
@@ -1869,8 +1959,6 @@ void directions(){
                 motorA2PNS(S);
                 motorB1PNS(S);
                 motorB2PNS(S);
-                
-
                 break;
             }
 
@@ -1881,6 +1969,7 @@ void directions(){
         //printf("goStraight\n");
         while (true){
             Sensor_L_M = digitalRead(SensorPinF_2);
+            Sensor_R_M = digitalRead(SensorPinR_2);
 
             motorA1PNS(P);
             motorB1PNS(P);
@@ -2170,42 +2259,27 @@ void directions(){
         break;
 
     case stp:
+        setSpdA1(0);
+        setSpdA2(0);
+        setSpdB1(0);
+        setSpdB2(0);
         motorA1();
         motorA2();
         motorB1();
         motorB2();
+        delay(200);
 
         motorA1PNS(S);
         motorA2PNS(S);
         motorB1PNS(S);
         motorB2PNS(S);
 
-        // while(stpCount--){
+        setSpdA1(targetSpd);
+        setSpdA2(targetSpd);
+        setSpdB1(targetSpd);
+        setSpdB2(targetSpd);
 
-
-        //     motorA1PNS(S);
-        //     motorA2PNS(S);
-        //     motorB1PNS(S);
-        //     motorB2PNS(S);
-
-        //     motorA1PNS(N);
-        //     motorA2PNS(N);
-        //     motorB1PNS(N);
-        //     motorB2PNS(N);
-
-        //     motorA1PNS(P);
-        //     motorA2PNS(P);
-        //     motorB1PNS(P);
-        //     motorB2PNS(P);
-
-        // }
-
-
-        
-
-
-
-
+        break;
 
     }
   
@@ -2338,8 +2412,6 @@ void traverseMission(){
 * 参数: 无,使用全局变量任务序列
 */
 missions* missionsInit(){
-  //路径序列,每一个任务的路径,共有14个
-//   mission missionAry[14];
 
     missions* p = NULL;
     missions* h = NULL;
@@ -2354,14 +2426,83 @@ missions* missionsInit(){
     h->head = S_Code();
     h->flag = true;
 
+    //原料区1
     p = (missions*)malloc(sizeof(missions));
 
-  //原料区1
-    p->head = T_Obj();
+    
+    p->head = T_Obj1();
     p->flag = true;
 
     h->next = p;
     p->next = NULL;
+
+    //粗加工1
+    p->next = (missions*)malloc(sizeof(missions));
+
+    p = p->next;
+
+    p->head = P_Obj1();
+    p->flag = true;
+
+    p->next = NULL;
+
+    // //半成品区1
+
+    // p->next = (missions*)malloc(sizeof(missions));
+
+    // p = p->next;
+
+    // p->head = D_Obj1();
+    // p->flag = true;
+
+    // p->next = NULL;
+
+    // //原料区2(第二次抓取)
+
+    // p->next = (missions*)malloc(sizeof(missions));
+
+    // p = p->next;
+
+    // p->head = T_Obj2();
+    // p->flag = true;
+
+    // p->next = NULL;
+
+    // //粗加工2
+
+    // p->next = (missions*)malloc(sizeof(missions));
+
+    // p = p->next;
+
+    // p->head = P_Obj2();
+    // p->flag = true;
+
+    // p->next = NULL;
+
+    // //半成品2
+
+    // p->next = (missions*)malloc(sizeof(missions));
+
+    // p = p->next;
+
+    // p->head = D_Obj2();
+    // p->flag = true;
+
+    // p->next = NULL;
+
+    // //结束
+
+
+
+
+
+
+
+
+
+
+    
+
 
 
 
@@ -2420,8 +2561,8 @@ missions* missionsInit(){
 
 
 /*
-* 路径规划
-* 
+* 路径—任务规划
+* 读取传感器-切换路径-确认路径-方格经过确认-任务确认
 */
 void pathPlan()
 {
@@ -2467,12 +2608,13 @@ void pathPlan()
     flagC = true;
     flagD = false;
     T1 = T2 = 0;
+
+    //内存溢出保护
     if (mp == NULL){
         Listflag = false;
         currentStates = stp;
-        //整体规划启用
-        // mps = mps->next;
-        // mp = mps->head;
+        mps = mps->next;
+        mp = mps->head;
     }
   }
   
@@ -2587,6 +2729,15 @@ void pathPlan()
   {
 
 
+  case stp:
+    Listflag = false;
+    flagA = false;
+    flagB = false;
+    flagC = true;
+    flagD = false;
+    break;
+
+
   case goStraight:
   
   //上次状态为特殊模式
@@ -2699,7 +2850,7 @@ void pathPlan()
     {
       flagA = true;
     }
-    if (Sensor_L_M == 0)
+    if (Sensor_L_M == 0 && flagA)
     {
         // flagA = true;//测试后删掉
         flagB =true;
@@ -2723,13 +2874,7 @@ void pathPlan()
     }
     
     break;
-  case stp:
-    Listflag = false;
-    flagA = false;
-    flagB = false;
-    flagC = true;
-    flagD = false;
-    break;
+
 
 
 
@@ -2751,7 +2896,7 @@ void pathPlan()
     
   case micro_line_L:
   //碰线,切换下一个状态
-    if (!Sensor_L_L){
+    if (!Sensor_L_M){
       flagA = flagD = true;
       
       
@@ -2769,28 +2914,28 @@ void pathPlan()
     //中线模式
   case mid_line_F:
   //碰线,路径切换
-    if (!Sensor_L_M && !Sensor_R_M){
+    if (!Sensor_L_M || !Sensor_R_M){
       flagA = flagD = true;
       
     }
     break;
   case mid_line_B:
   //碰线,路径切换
-    if (!Sensor_L_M && !Sensor_R_M){
+    if (!Sensor_L_M || !Sensor_R_M){
       flagA = flagD = true;
     }
     break;
     
   case mid_line_L:
   //碰线,切换下一个状态
-    if (!Sensor_F_M && !Sensor_B_M){
+    if (!Sensor_F_M || !Sensor_B_M){
       flagA = flagD = true;
       
     }
      break;
   case mid_line_R:
   //碰线,切换下一个状态
-    if (!Sensor_B_M && !Sensor_F_M){
+    if (!Sensor_B_M || !Sensor_F_M){
       flagA = flagD = true;
     }
     break;
@@ -2798,7 +2943,6 @@ void pathPlan()
   default:
     break;
   }
-//   Serial.println(currentStates);
 
 
 
@@ -2813,65 +2957,93 @@ void pathPlan()
         //扫码请求
         // Serial.println("mission Mode");
         if ( !(mp->M_1) && !(mp->M_2) && !(mp->M_3) ){
-            // if (1){
-            //机械臂动作
-            Serial.println("ArmAct");
-            // int i = 22500;
-            myse.runActionGroup(1,1);
-            delay(2000);
+            // // if (1){
+            // //机械臂动作
+            // Serial.println("ArmAct");
+            // // int i = 22500;
+            // myse.runActionGroup(1,1);
+            // delay(2000);
+            // //扫码请求
+            // reqs("#A$","#Aa$");
+            // //持久化存储，LED显示
+            // getCode();
+            // //收回动作
+            // // i = 500;
+            // myse.runActionGroup(2,1);
+            // delay(2000);
+            // //开始下一个任务序列
+            // // flagA = flagD = true;//单个任务序列启用
+            // mps = mps->next;
+            // mp = mps->head;
+
+
+
+            // //防止越线导致检测失败
+            // flagA = true;
+
+/*--------------优化后的通信模块----------------*/
+
+
+            // Serial.println("ArmAct");
+
+            // myse.runActionGroup(1,1);
+            // directions();
+            // delay(2000);
+
             //扫码请求
-            reqs("#A$","#Aa$");
-            
+            reqs_1("#A$");
 
-            //持久化存储，LED显示
-            getCode();
-            //收回动作
+            //收回动作openmv控制
 
-            // i = 500;
-            myse.runActionGroup(2,1);
-            delay(2000);
-            //开始下一个任务序列
-            // flagA = flagD = true;//单个任务序列启用
-            mps = mps->next;
-            mp = mps->head;
+            // myse.runActionGroup(2,1);
+            // directions();
+            // delay(4000);
 
+            return;
 
         }   
         
         //第二次动态路径规划
-        if (mp->M_1 && !(mp->M_2) && !(mp->M_3)){
-            dynamicGrabPlan();
-            flagA = flagD = true;
-            return;
-        }
+        // if (mp->M_1 && !(mp->M_2) && !(mp->M_3)){
+        //     dynamicGrabPlan();
+        //     flagA = flagD = true;
+        //     return;
+        // }
 
         //抓取请求
-        if ( !(mp->M_1) && !(mp->M_2) && mp->M_3 ){
+        if ( !(mp->M_1) && !(mp->M_2) && mp->M_3){
+            // grab_plan_count++;
+            // Serial.println("请求抓取");
+
+            // //扫描
+            // myse.runActionGroup(3,1);
+            // //运行一次防止因延时造成错误
+            // directions();
+
+            // delay(10000);
+
+            // //有规划时跳出，反之一直运行
+            // reqs("#B$","#Bb$");
+
+            
+            // Serial.println("------plan-----");
+            // Serial.println(UART_PLAN[0]);
+            // Serial.println(UART_PLAN[1]);
+            // Serial.println(UART_PLAN[2]);
+            // Serial.println("------plan-----");
+
+            
+
+            // //切换路径有两个方法，一个是主动使用指针切换，一个是自动切换任务
+            // flagA = flagD = true;//单次任务路径切换启用
+
+/*--------------------优化后的通信模块-----------------------*/
             Serial.println("请求抓取");
-
-            //抓取请求
-            myse.runActionGroup(3,1);
-
-            reqs("#B$","#Bb$");
-            flagA = flagD = true;//单个任务序列启用
+            // myse.runActionGroup(3,1);
+            // directions();
+            // delay(10000);
+            reqs_1("#B$");
             
-            //最新：Openmv发送误差后即可移动！！！！！！！！！！！！！！！！！！！
-            
-            //如果第二次没有规划,抓取第三个
-
-            //抓取当前, UART_DELTA[0] UART_DELTA[1] UART_DELTA[2]=1
-
-            // if (UART_DELTA[2]){
-            //     // ctrl_grab_servo();
-            //     flagA = flagD = true;
-            //     delay(1);
-            // }
-
-            //移动到下一个
-            // else{
-            //     flagA = flagD = true;
-                
-            // }
 
     }
     
@@ -2949,9 +3121,89 @@ mission* S_Code(){
 
 
 
-//物料区
-mission* T_Obj(){
-  mission demo[5];
+//物料区1
+mission* T_Obj1(){
+  mission demo[4];
+  //Front
+  demo[0].A = false;
+  demo[0].B = false;
+  demo[0].C = false;
+  demo[0].D = false;
+  demo[0].E = false;
+  demo[0].M = false;
+  demo[0].M_1 = false;
+  demo[0].M_2 = false;
+  demo[0].M_3 = false;
+  
+  //Front
+  demo[1].A = false;
+  demo[1].B = false;
+  demo[1].C = false;
+  demo[1].D = false;
+  demo[1].E = false;
+  demo[1].M = false;
+  demo[1].M_1 = false;
+  demo[1].M_2 = false;
+  demo[1].M_3 = false;
+
+
+
+  //Front
+  demo[2].A = false;
+  demo[2].B = false;
+  demo[2].C = false;
+  demo[2].D = false;
+  demo[2].E = false;
+  demo[2].M = false;
+  demo[2].M_1 = false;
+  demo[2].M_2 = false;
+  demo[2].M_3 = false;
+  //Stop-REQ-Grab
+  demo[3].A = false;
+  demo[3].B = false;
+  demo[3].C = true;
+  demo[3].D = false;
+  demo[3].E = false;
+  demo[3].M = true;
+  demo[3].M_1 = false;
+  demo[3].M_2 = false;
+  demo[3].M_3 = true;
+
+
+
+//   //Front-Mid-Line
+//   demo[3].A = false;
+//   demo[3].B = false;
+//   demo[3].C = false;
+//   demo[3].D = false;
+//   demo[3].E = true;
+//   demo[3].M = false;
+//   demo[3].M_1 = false;
+//   demo[3].M_2 = false;
+//   demo[3].M_3 = false;
+
+
+//   //Stop-REQ-Grub
+//   demo[4].A = false;
+//   demo[4].B = false;
+//   demo[4].C = true;
+//   demo[4].D = false;
+//   demo[4].E = false;
+//   demo[4].M = true;
+//   demo[4].M_1 = false;
+//   demo[4].M_2 = false;
+//   demo[4].M_3 = true;
+
+
+
+  return createMissionList(4,demo);
+  
+}
+
+
+//物料区2
+mission* T_Obj2(){
+  mission demo[4];
   //Front
   demo[0].A = false;
   demo[0].B = false;
@@ -2979,317 +3231,704 @@ mission* T_Obj(){
   //Stop-REQ-Grab
   demo[2].A = false;
   demo[2].B = false;
-  demo[2].C = true;
+  demo[2].C = false;
   demo[2].D = false;
   demo[2].E = false;
-  demo[2].M = true;
+  demo[2].M = false;
   demo[2].M_1 = false;
   demo[2].M_2 = false;
-  demo[2].M_3 = true;
-
-
-
-  //Front-Mid-Line
+  demo[2].M_3 = false;
+  //Stop-REQ-Grab
   demo[3].A = false;
   demo[3].B = false;
-  demo[3].C = false;
+  demo[3].C = true;
   demo[3].D = false;
-  demo[3].E = true;
-  demo[3].M = false;
+  demo[3].E = false;
+  demo[3].M = true;
   demo[3].M_1 = false;
   demo[3].M_2 = false;
-  demo[3].M_3 = false;
-
-
-  //Stop-REQ-Grub
-  demo[4].A = false;
-  demo[4].B = false;
-  demo[4].C = true;
-  demo[4].D = false;
-  demo[4].E = false;
-  demo[4].M = true;
-  demo[4].M_1 = false;
-  demo[4].M_2 = false;
-  demo[4].M_3 = true;
+  demo[3].M_3 = true;
 
 
 
-  return createMissionList(5,demo);
+//   //Front-Mid-Line
+//   demo[3].A = false;
+//   demo[3].B = false;
+//   demo[3].C = false;
+//   demo[3].D = false;
+//   demo[3].E = true;
+//   demo[3].M = false;
+//   demo[3].M_1 = false;
+//   demo[3].M_2 = false;
+//   demo[3].M_3 = false;
+
+
+//   //Stop-REQ-Grub
+//   demo[4].A = false;
+//   demo[4].B = false;
+//   demo[4].C = true;
+//   demo[4].D = false;
+//   demo[4].E = false;
+//   demo[4].M = true;
+//   demo[4].M_1 = false;
+//   demo[4].M_2 = false;
+//   demo[4].M_3 = true;
+
+
+
+  return createMissionList(4,demo);
   
 }
 
+
+
+    //粗加工区1
+mission* P_Obj1(){
+    
+  mission demo[3];
+  //R
+  demo[0].A = false;
+  demo[0].B = true;
+  demo[0].C = false;
+  demo[0].D = false;
+  demo[0].E = false;
+  demo[0].M = false;
+  demo[0].M_1 = false;
+  demo[0].M_2 = false;
+  demo[0].M_3 = false;
+  //F
+  demo[1].A = false;
+  demo[1].B = true;
+  demo[1].C = false;
+  demo[1].D = false;
+  demo[1].E = false;
+  demo[1].M = false;
+  demo[1].M_1 = false;
+  demo[1].M_2 = false;
+  demo[1].M_3 = false;
+  //F
+  demo[2].A = false;
+  demo[2].B = false;
+  demo[2].C = true;
+  demo[2].D = false;
+  demo[2].E = false;
+  demo[2].M = false;
+  demo[2].M_1 = false;
+  demo[2].M_2 = false;
+  demo[2].M_3 = false;
+
+    return createMissionList(3,demo);
+}
+
+    //粗加工区2
+mission* P_Obj2(){
+    return NULL;
+}
+
+//半成品区1
+mission* D_Obj1(){
+    return NULL;
+}
+
+//半成品区2
+mission* D_Obj2(){
+    return NULL;
+}
 /*
 *抓取动态规划
+*失败返回false
 */
-void dynamicGrabPlan(){
 
-    //规划有效 312  321  320  310  130
+bool dynamicGrabPlan(){
+
+    //规划有效判断
     if (UART_PLAN[0]){
-        //320  310  130
-        if (!UART_PLAN[2]){
-            //320  310
-            if (UART_PLAN[0] == 3){
-                //320
-                if (UART_PLAN[1] == 2){
-
-                    mp->next = (mission*)malloc(sizeof(mission));
-                    //前
-                    mp->next->A = false;
-                    mp->next->B = false;
-                    mp->next->C = false;
-                    mp->next->D = false;
-                    mp->next->E = false;
-                    mp->next->M = false;
-                    mp->next->M_1 = false;
-                    mp->next->M_2 = false;
-                    mp->next->M_3 = false;
-
-                    mp->next->next = (mission*)malloc(sizeof(mission));
-
-                    //STOP-REQ-Grab
-                    mp->next->next->A = false;
-                    mp->next->next->B = false;
-                    mp->next->next->C = true;
-                    mp->next->next->D = false;
-                    mp->next->next->E = false;
-                    mp->next->next->M = true;
-                    mp->next->next->M_1 = false;
-                    mp->next->next->M_2 = false;
-                    mp->next->next->M_3 = true;
-
-                    mp->next->next->next = (mission*)malloc(sizeof(mission));
-
-                    //Back-Mid-Line
-                    mp->next->next->next->A = false;
-                    mp->next->next->next->B = true;
-                    mp->next->next->next->C = false;
-                    mp->next->next->next->D = false;
-                    mp->next->next->next->E = true;
-                    mp->next->next->next->M = false;
-                    mp->next->next->next->M_1 = false;
-                    mp->next->next->next->M_2 = false;
-                    mp->next->next->next->M_3 = false;
-
-                    mp->next->next->next->next = (mission*)malloc(sizeof(mission));
-
-                    //STOP-REQ-Grab
-                    mp->next->next->next->next->A = false;
-                    mp->next->next->next->next->B = false;
-                    mp->next->next->next->next->C = true;
-                    mp->next->next->next->next->D = false;
-                    mp->next->next->next->next->E = false;
-                    mp->next->next->next->next->M = false;
-                    mp->next->next->next->next->M_1 = false;
-                    mp->next->next->next->next->M_2 = false;
-                    mp->next->next->next->next->M_3 = true;
-
-                    mp->next->next->next->next->next = (mission*)malloc(sizeof(mission));
-
-                    //前(复位到方格,准备进行物料放置)
-                    mp->next->next->next->next->next->A = false;
-                    mp->next->next->next->next->next->B = false;
-                    mp->next->next->next->next->next->C = false;
-                    mp->next->next->next->next->next->D = false;
-                    mp->next->next->next->next->next->E = false;
-                    mp->next->next->next->next->next->M = false;
-                    mp->next->next->next->next->next->M_1 = false;
-                    mp->next->next->next->next->next->M_2 = false;
-                    mp->next->next->next->next->next->M_3 = false;
-
-                    mp->next->next->next->next->next = NULL;
+        
+        //123 132 213 231 312 321
 
 
-                }
+        //123 132
+        if (UART_PLAN[0] == 1){
+            //123
+            if (UART_PLAN[1] == 2){
+
+                mp->next = (mission*)malloc(sizeof(mission));
+                //Front-mid-line
+                mp->next->A = false;
+                mp->next->B = false;
+                mp->next->C = false;
+                mp->next->D = false;
+                mp->next->E = true;
+                mp->next->M = false;
+                mp->next->M_1 = false;
+                mp->next->M_2 = false;
+                mp->next->M_3 = false;
+                mp->next->next = NULL;
 
 
-                //310
-                if (UART_PLAN[1] == 1){
-
-                    mp->next = (mission*)malloc(sizeof(mission));
-                    //前
-                    mp->next->A = false;
-                    mp->next->B = false;
-                    mp->next->C = false;
-                    mp->next->D = false;
-                    mp->next->E = false;
-                    mp->next->M = false;
-                    mp->next->M_1 = false;
-                    mp->next->M_2 = false;
-                    mp->next->M_3 = false;
-
-                    mp->next->next = (mission*)malloc(sizeof(mission));
-
-                    //STOP-REQ-Grab
-                    mp->next->next->A = false;
-                    mp->next->next->B = false;
-                    mp->next->next->C = true;
-                    mp->next->next->D = false;
-                    mp->next->next->E = false;
-                    mp->next->next->M = true;
-                    mp->next->next->M_1 = false;
-                    mp->next->next->M_2 = false;
-                    mp->next->next->M_3 = true;
-
-                    mp->next->next->next = (mission*)malloc(sizeof(mission));
-
-                    //Back
-                    mp->next->next->next->A = true;
-                    mp->next->next->next->B = true;
-                    mp->next->next->next->C = false;
-                    mp->next->next->next->D = false;
-                    mp->next->next->next->E = false;
-                    mp->next->next->next->M = false;
-                    mp->next->next->next->M_1 = false;
-                    mp->next->next->next->M_2 = false;
-                    mp->next->next->next->M_3 = false;
-
-                    mp->next->next->next->next = (mission*)malloc(sizeof(mission));
-
-                    //STOP-REQ-Grab
-                    mp->next->next->next->next->A = false;
-                    mp->next->next->next->next->B = false;
-                    mp->next->next->next->next->C = true;
-                    mp->next->next->next->next->D = false;
-                    mp->next->next->next->next->E = false;
-                    mp->next->next->next->next->M = false;
-                    mp->next->next->next->next->M_1 = false;
-                    mp->next->next->next->next->M_2 = false;
-                    mp->next->next->next->next->M_3 = true;
-
-                    mp->next->next->next->next->next = (mission*)malloc(sizeof(mission));
-
-                    //前
-                    mp->next->next->next->next->next->A = false;
-                    mp->next->next->next->next->next->B = false;
-                    mp->next->next->next->next->next->C = false;
-                    mp->next->next->next->next->next->D = false;
-                    mp->next->next->next->next->next->E = false;
-                    mp->next->next->next->next->next->M = false;
-                    mp->next->next->next->next->next->M_1 = false;
-                    mp->next->next->next->next->next->M_2 = false;
-                    mp->next->next->next->next->next->M_3 = false;
+                mp->next->next = (mission*)malloc(sizeof(mission));
+                //Stp-REQ-grab
+                mp->next->next->A = false;
+                mp->next->next->B = false;
+                mp->next->next->C = true;
+                mp->next->next->D = false;
+                mp->next->next->E = false;
+                mp->next->next->M = true;
+                mp->next->next->M_1 = false;
+                mp->next->next->M_2 = false;
+                mp->next->next->M_3 = true;
+                mp->next->next->next = NULL;
 
 
 
-                    mp->next->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+                mp->next->next->next = (mission*)malloc(sizeof(mission));
+                //Front
+                mp->next->next->next->A = false;
+                mp->next->next->next->B = false;
+                mp->next->next->next->C = false;
+                mp->next->next->next->D = false;
+                mp->next->next->next->E = false;
+                mp->next->next->next->M = false;
+                mp->next->next->next->M_1 = false;
+                mp->next->next->next->M_2 = false;
+                mp->next->next->next->M_3 = false;
+                mp->next->next->next->next = NULL;
 
-                    //前(复位到方格,准备进行物料放置)
-                    mp->next->next->next->next->next->next->A = false;
-                    mp->next->next->next->next->next->next->B = false;
-                    mp->next->next->next->next->next->next->C = false;
-                    mp->next->next->next->next->next->next->D = false;
-                    mp->next->next->next->next->next->next->E = false;
-                    mp->next->next->next->next->next->next->M = false;
-                    mp->next->next->next->next->next->next->M_1 = false;
-                    mp->next->next->next->next->next->next->M_2 = false;
-                    mp->next->next->next->next->next->next->M_3 = false;
 
-                    mp->next->next->next->next->next->next = NULL;
 
-                }
+                mp->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Stp-REQ-grab
+                mp->next->next->next->next->A = false;
+                mp->next->next->next->next->B = false;
+                mp->next->next->next->next->C = true;
+                mp->next->next->next->next->D = false;
+                mp->next->next->next->next->E = false;
+                mp->next->next->next->next->M = true;
+                mp->next->next->next->next->M_1 = false;
+                mp->next->next->next->next->M_2 = false;
+                mp->next->next->next->next->M_3 = true;
+                mp->next->next->next->next->next = NULL;  
+
+                return false;
+
+
 
             }
 
+            //132
+            else{
+
+                mp->next = (mission*)malloc(sizeof(mission));
+                //Front-mid-line
+                mp->next->A = false;
+                mp->next->B = false;
+                mp->next->C = false;
+                mp->next->D = false;
+                mp->next->E = false;
+                mp->next->M = false;
+                mp->next->M_1 = false;
+                mp->next->M_2 = false;
+                mp->next->M_3 = false;
+                mp->next->next = NULL;
+
+
+                mp->next->next = (mission*)malloc(sizeof(mission));
+                //Stp-REQ-grab
+                mp->next->next->A = false;
+                mp->next->next->B = false;
+                mp->next->next->C = true;
+                mp->next->next->D = false;
+                mp->next->next->E = false;
+                mp->next->next->M = true;
+                mp->next->next->M_1 = false;
+                mp->next->next->M_2 = false;
+                mp->next->next->M_3 = true;
+                mp->next->next->next = NULL;
+
+
+
+                mp->next->next->next = (mission*)malloc(sizeof(mission));
+                //Back-mid-line
+                mp->next->next->next->A = false;
+                mp->next->next->next->B = true;
+                mp->next->next->next->C = false;
+                mp->next->next->next->D = false;
+                mp->next->next->next->E = false;
+                mp->next->next->next->M = false;
+                mp->next->next->next->M_1 = false;
+                mp->next->next->next->M_2 = false;
+                mp->next->next->next->M_3 = false;
+                mp->next->next->next->next = NULL;
+
+
+
+                mp->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Stp-REQ-grab
+                mp->next->next->next->next->A = false;
+                mp->next->next->next->next->B = false;
+                mp->next->next->next->next->C = true;
+                mp->next->next->next->next->D = false;
+                mp->next->next->next->next->E = false;
+                mp->next->next->next->next->M = true;
+                mp->next->next->next->next->M_1 = false;
+                mp->next->next->next->next->M_2 = false;
+                mp->next->next->next->next->M_3 = true;
+                mp->next->next->next->next->next = NULL;  
+
+
+                mp->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Front
+                mp->next->next->next->next->next->A = false;
+                mp->next->next->next->next->next->B = false;
+                mp->next->next->next->next->next->C = false;
+                mp->next->next->next->next->next->D = false;
+                mp->next->next->next->next->next->E = false;
+                mp->next->next->next->next->next->M = false;
+                mp->next->next->next->next->next->M_1 = false;
+                mp->next->next->next->next->next->M_2 = false;
+                mp->next->next->next->next->next->M_3 = false;
+                mp->next->next->next->next->next->next = NULL; 
+                return false;
+            }
+
         }
-                //130
+
+        //213 231
+        else if (UART_PLAN[0] == 2){
+            //213
+            if (UART_PLAN[1] == 1){
+
+                mp->next = (mission*)malloc(sizeof(mission));
+                //Front-mid-line
+                mp->next->A = false;
+                mp->next->B = false;
+                mp->next->C = false;
+                mp->next->D = false;
+                mp->next->E = true;
+                mp->next->M = false;
+                mp->next->M_1 = false;
+                mp->next->M_2 = false;
+                mp->next->M_3 = false;
+                mp->next->next = NULL;
+
+
+                mp->next->next = (mission*)malloc(sizeof(mission));
+                //Stp-REQ-grab
+                mp->next->next->A = false;
+                mp->next->next->B = false;
+                mp->next->next->C = true;
+                mp->next->next->D = false;
+                mp->next->next->E = false;
+                mp->next->next->M = true;
+                mp->next->next->M_1 = false;
+                mp->next->next->M_2 = false;
+                mp->next->next->M_3 = true;
+                mp->next->next->next = NULL;
+
+
+
+                mp->next->next->next = (mission*)malloc(sizeof(mission));
+                //Back
+                mp->next->next->next->A = false;
+                mp->next->next->next->B = true;
+                mp->next->next->next->C = false;
+                mp->next->next->next->D = false;
+                mp->next->next->next->E = true;
+                mp->next->next->next->M = false;
+                mp->next->next->next->M_1 = false;
+                mp->next->next->next->M_2 = false;
+                mp->next->next->next->M_3 = false;
+                mp->next->next->next->next = NULL;
+
+
+
+                mp->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Stp-REQ-grab
+                mp->next->next->next->next->A = false;
+                mp->next->next->next->next->B = false;
+                mp->next->next->next->next->C = true;
+                mp->next->next->next->next->D = false;
+                mp->next->next->next->next->E = false;
+                mp->next->next->next->next->M = true;
+                mp->next->next->next->next->M_1 = false;
+                mp->next->next->next->next->M_2 = false;
+                mp->next->next->next->next->M_3 = true;
+                mp->next->next->next->next->next = NULL;  
+
+
+                mp->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Front
+                mp->next->next->next->next->next->A = false;
+                mp->next->next->next->next->next->B = false;
+                mp->next->next->next->next->next->C = false;
+                mp->next->next->next->next->next->D = false;
+                mp->next->next->next->next->next->E = false;
+                mp->next->next->next->next->next->M = false;
+                mp->next->next->next->next->next->M_1 = false;
+                mp->next->next->next->next->next->M_2 = false;
+                mp->next->next->next->next->next->M_3 = false;
+                mp->next->next->next->next->next->next = NULL;  
+
+
+
+                mp->next->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Stp-REQ-grab
+                mp->next->next->next->next->next->next->A = false;
+                mp->next->next->next->next->next->next->B = false;
+                mp->next->next->next->next->next->next->C = false;
+                mp->next->next->next->next->next->next->D = false;
+                mp->next->next->next->next->next->next->E = false;
+                mp->next->next->next->next->next->next->M = false;
+                mp->next->next->next->next->next->next->M_1 = false;
+                mp->next->next->next->next->next->next->M_2 = false;
+                mp->next->next->next->next->next->next->M_3 = false;
+                mp->next->next->next->next->next->next->next = NULL;
+                return false;
+            }
+
+
+            //231
+            else{
+
+                mp->next = (mission*)malloc(sizeof(mission));
+                //Front-mid-line
+                mp->next->A = false;
+                mp->next->B = false;
+                mp->next->C = false;
+                mp->next->D = false;
+                mp->next->E = true;
+                mp->next->M = false;
+                mp->next->M_1 = false;
+                mp->next->M_2 = false;
+                mp->next->M_3 = false;
+                mp->next->next = NULL;
+
+
+                mp->next->next = (mission*)malloc(sizeof(mission));
+                //Stp-REQ-grab
+                mp->next->next->A = false;
+                mp->next->next->B = false;
+                mp->next->next->C = true;
+                mp->next->next->D = false;
+                mp->next->next->E = false;
+                mp->next->next->M = true;
+                mp->next->next->M_1 = false;
+                mp->next->next->M_2 = false;
+                mp->next->next->M_3 = true;
+                mp->next->next->next = NULL;
+
+
+
+                mp->next->next->next = (mission*)malloc(sizeof(mission));
+                //Front
+                mp->next->next->next->A = false;
+                mp->next->next->next->B = false;
+                mp->next->next->next->C = false;
+                mp->next->next->next->D = false;
+                mp->next->next->next->E = false;
+                mp->next->next->next->M = false;
+                mp->next->next->next->M_1 = false;
+                mp->next->next->next->M_2 = false;
+                mp->next->next->next->M_3 = false;
+                mp->next->next->next->next = NULL;
+
+
+
+                mp->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Stp-REQ-grab
+                mp->next->next->next->next->A = false;
+                mp->next->next->next->next->B = false;
+                mp->next->next->next->next->C = true;
+                mp->next->next->next->next->D = false;
+                mp->next->next->next->next->E = false;
+                mp->next->next->next->next->M = true;
+                mp->next->next->next->next->M_1 = false;
+                mp->next->next->next->next->M_2 = false;
+                mp->next->next->next->next->M_3 = true;
+                mp->next->next->next->next->next = NULL;  
+
+
+                mp->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Back
+                mp->next->next->next->next->next->A = false;
+                mp->next->next->next->next->next->B = true;
+                mp->next->next->next->next->next->C = false;
+                mp->next->next->next->next->next->D = false;
+                mp->next->next->next->next->next->E = false;
+                mp->next->next->next->next->next->M = false;
+                mp->next->next->next->next->next->M_1 = false;
+                mp->next->next->next->next->next->M_2 = false;
+                mp->next->next->next->next->next->M_3 = false;
+                mp->next->next->next->next->next->next = NULL;  
+
+
+
+                mp->next->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Stp-REQ-grab
+                mp->next->next->next->next->next->next->A = false;
+                mp->next->next->next->next->next->next->B = false;
+                mp->next->next->next->next->next->next->C = false;
+                mp->next->next->next->next->next->next->D = false;
+                mp->next->next->next->next->next->next->E = false;
+                mp->next->next->next->next->next->next->M = false;
+                mp->next->next->next->next->next->next->M_1 = false;
+                mp->next->next->next->next->next->next->M_2 = false;
+                mp->next->next->next->next->next->next->M_3 = false;
+                mp->next->next->next->next->next->next->next = NULL;
+                return false;
+
+            }
+
+
+
+
+
+
+
+        }
+
+        //312 321
         else{
-            mission* p = NULL;
-            
-            p = (mission*)malloc(sizeof(mission));
+            //312
+            if(UART_PLAN[1] == 1){
 
-            mp->next = p;
-            //后
-            p->A = false;
-            p->B = true;
-            p->C = false;
-            p->D = false;
-            p->E = false;
-            p->M = false;
-            p->M_1 = false;
-            p->M_2 = false;
-            p->M_3 = false;
+                // Serial.println("plan.....");
 
-            p->next = (mission*)malloc(sizeof(mission));
-            //STOP-REQ-Grab
-            p->next->A = false;
-            p->next->B = false;
-            p->next->C = true;
-            p->next->D = false;
-            p->next->E = false;
-            p->next->M = true;
-            p->next->M_1 = false;
-            p->next->M_2 = false;
-            p->next->M_3 = true;
+                mp->next = (mission*)malloc(sizeof(mission));
+                //Front
+                mp->next->A = false;
+                mp->next->B = false;
+                mp->next->C = false;
+                mp->next->D = false;
+                mp->next->E = false;
+                mp->next->M = false;
+                mp->next->M_1 = false;
+                mp->next->M_2 = false;
+                mp->next->M_3 = false;
+                mp->next->next = NULL;
 
-            p->next->next = (mission*)malloc(sizeof(mission));
-            
-            //前
-            p->next->next->A = false;
-            p->next->next->B = false;
-            p->next->next->C = false;
-            p->next->next->D = false;
-            p->next->next->E = false;
-            p->next->next->M = false;
-            p->next->next->M_1 = false;
-            p->next->next->M_2 = false;
-            p->next->next->M_3 = false;
 
-            p->next->next->next = (mission*)malloc(sizeof(mission));
-            //前
-            p->next->next->next->A = false;
-            p->next->next->next->B = false;
-            p->next->next->next->C = false;
-            p->next->next->next->D = false;
-            p->next->next->next->E = false;
-            p->next->next->next->M = false;
-            p->next->next->next->M_1 = false;
-            p->next->next->next->M_2 = false;
-            p->next->next->next->M_3 = false;
+                mp->next->next = (mission*)malloc(sizeof(mission));
+                //Stp-REQ-grab
+                mp->next->next->A = false;
+                mp->next->next->B = false;
+                mp->next->next->C = true;
+                mp->next->next->D = false;
+                mp->next->next->E = false;
+                mp->next->next->M = true;
+                mp->next->next->M_1 = false;
+                mp->next->next->M_2 = false;
+                mp->next->next->M_3 = true;
+                mp->next->next->next = NULL;
 
-            p->next->next->next->next = (mission*)malloc(sizeof(mission));
 
-            //STOP-REQ-Grab
-            p->next->next->next->next->A = false;
-            p->next->next->next->next->B = false;
-            p->next->next->next->next->C = true;
-            p->next->next->next->next->D = false;
-            p->next->next->next->next->E = false;
-            p->next->next->next->next->M = true;
-            p->next->next->next->next->M_1 = false;
-            p->next->next->next->next->M_2 = false;
-            p->next->next->next->next->M_3 = true;
 
-            p->next->next->next->next->next = NULL;
+                mp->next->next->next = (mission*)malloc(sizeof(mission));
+                //Back
+                mp->next->next->next->A = false;
+                mp->next->next->next->B = true;
+                mp->next->next->next->C = false;
+                mp->next->next->next->D = false;
+                mp->next->next->next->E = false;
+                mp->next->next->next->M = false;
+                mp->next->next->next->M_1 = false;
+                mp->next->next->next->M_2 = false;
+                mp->next->next->next->M_3 = false;
+                mp->next->next->next->next = NULL;
 
+
+
+                mp->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Stp-REQ-grab
+                mp->next->next->next->next->A = false;
+                mp->next->next->next->next->B = false;
+                mp->next->next->next->next->C = true;
+                mp->next->next->next->next->D = false;
+                mp->next->next->next->next->E = false;
+                mp->next->next->next->next->M = true;
+                mp->next->next->next->next->M_1 = false;
+                mp->next->next->next->next->M_2 = false;
+                mp->next->next->next->next->M_3 = true;
+                mp->next->next->next->next->next = NULL;  
+
+
+                mp->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Front-mid-line
+                mp->next->next->next->next->next->A = false;
+                mp->next->next->next->next->next->B = false;
+                mp->next->next->next->next->next->C = false;
+                mp->next->next->next->next->next->D = false;
+                mp->next->next->next->next->next->E = true;
+                mp->next->next->next->next->next->M = false;
+                mp->next->next->next->next->next->M_1 = false;
+                mp->next->next->next->next->next->M_2 = false;
+                mp->next->next->next->next->next->M_3 = false;
+                mp->next->next->next->next->next->next = NULL;  
+
+
+
+                mp->next->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Stp-REQ-grab
+                mp->next->next->next->next->next->next->A = false;
+                mp->next->next->next->next->next->next->B = false;
+                mp->next->next->next->next->next->next->C = false;
+                mp->next->next->next->next->next->next->D = false;
+                mp->next->next->next->next->next->next->E = false;
+                mp->next->next->next->next->next->next->M = false;
+                mp->next->next->next->next->next->next->M_1 = false;
+                mp->next->next->next->next->next->next->M_2 = false;
+                mp->next->next->next->next->next->next->M_3 = false;
+                mp->next->next->next->next->next->next->next = NULL;
+
+
+                mp->next->next->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Front
+                mp->next->next->next->next->next->next->next->A = false;
+                mp->next->next->next->next->next->next->next->B = false;
+                mp->next->next->next->next->next->next->next->C = false;
+                mp->next->next->next->next->next->next->next->D = false;
+                mp->next->next->next->next->next->next->next->E = false;
+                mp->next->next->next->next->next->next->next->M = false;
+                mp->next->next->next->next->next->next->next->M_1 = false;
+                mp->next->next->next->next->next->next->next->M_2 = false;
+                mp->next->next->next->next->next->next->next->M_3 = false;
+                mp->next->next->next->next->next->next->next->next = NULL;
+                
+                return false;
             }
 
+            //321
+            else{
+
+                mp->next = (mission*)malloc(sizeof(mission));
+                //Front
+                mp->next->A = false;
+                mp->next->B = false;
+                mp->next->C = false;
+                mp->next->D = false;
+                mp->next->E = false;
+                mp->next->M = false;
+                mp->next->M_1 = false;
+                mp->next->M_2 = false;
+                mp->next->M_3 = false;
+                mp->next->next = NULL;
+
+
+                mp->next->next = (mission*)malloc(sizeof(mission));
+                //Stp-REQ-grab
+                mp->next->next->A = false;
+                mp->next->next->B = false;
+                mp->next->next->C = true;
+                mp->next->next->D = false;
+                mp->next->next->E = false;
+                mp->next->next->M = true;
+                mp->next->next->M_1 = false;
+                mp->next->next->M_2 = false;
+                mp->next->next->M_3 = true;
+                mp->next->next->next = NULL;
+
+
+
+                mp->next->next->next = (mission*)malloc(sizeof(mission));
+                //Back-mid-line
+                mp->next->next->next->A = false;
+                mp->next->next->next->B = false;
+                mp->next->next->next->C = false;
+                mp->next->next->next->D = false;
+                mp->next->next->next->E = true;
+                mp->next->next->next->M = false;
+                mp->next->next->next->M_1 = false;
+                mp->next->next->next->M_2 = false;
+                mp->next->next->next->M_3 = false;
+                mp->next->next->next->next = NULL;
+
+
+
+                mp->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Stp-REQ-grab
+                mp->next->next->next->next->A = false;
+                mp->next->next->next->next->B = false;
+                mp->next->next->next->next->C = true;
+                mp->next->next->next->next->D = false;
+                mp->next->next->next->next->E = false;
+                mp->next->next->next->next->M = true;
+                mp->next->next->next->next->M_1 = false;
+                mp->next->next->next->next->M_2 = false;
+                mp->next->next->next->next->M_3 = true;
+                mp->next->next->next->next->next = NULL;  
+
+
+                mp->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Back
+                mp->next->next->next->next->next->A = false;
+                mp->next->next->next->next->next->B = true;
+                mp->next->next->next->next->next->C = false;
+                mp->next->next->next->next->next->D = false;
+                mp->next->next->next->next->next->E = false;
+                mp->next->next->next->next->next->M = false;
+                mp->next->next->next->next->next->M_1 = false;
+                mp->next->next->next->next->next->M_2 = false;
+                mp->next->next->next->next->next->M_3 = false;
+                mp->next->next->next->next->next->next = NULL;  
+
+
+
+                mp->next->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Stp-REQ-grab
+                mp->next->next->next->next->next->next->A = false;
+                mp->next->next->next->next->next->next->B = false;
+                mp->next->next->next->next->next->next->C = false;
+                mp->next->next->next->next->next->next->D = false;
+                mp->next->next->next->next->next->next->E = false;
+                mp->next->next->next->next->next->next->M = false;
+                mp->next->next->next->next->next->next->M_1 = false;
+                mp->next->next->next->next->next->next->M_2 = false;
+                mp->next->next->next->next->next->next->M_3 = false;
+                mp->next->next->next->next->next->next->next = NULL;
+
+
+                mp->next->next->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Front
+                mp->next->next->next->next->next->next->next->A = false;
+                mp->next->next->next->next->next->next->next->B = false;
+                mp->next->next->next->next->next->next->next->C = false;
+                mp->next->next->next->next->next->next->next->D = false;
+                mp->next->next->next->next->next->next->next->E = false;
+                mp->next->next->next->next->next->next->next->M = false;
+                mp->next->next->next->next->next->next->next->M_1 = false;
+                mp->next->next->next->next->next->next->next->M_2 = false;
+                mp->next->next->next->next->next->next->next->M_3 = false;
+                mp->next->next->next->next->next->next->next->next = NULL;
+                return false;
             
+            }
+
         }
 
-    //规划无效
-    else{
-        //直接动态规划抓取第三个
-        
-        
+
     }
 
-    
+    else {
+        return true;
+    }
 }
+
+
 
 
 
 /*
 * 偏移检测
+* 读取传感器-读取当前状态-过线修正-方格内保持修正
 * 根据时间来确定偏移度
 * 对当前状态进行纠正
 * 使用定时中断
 */
-
 void stateFix()
 {
 
-    
-  if (currentStates >4 && currentStates<9){
+    //特殊模式不启用
+  if (currentStates > 4 && currentStates < 9){
     return;
   }
 
@@ -4262,7 +4901,35 @@ bool get_data(){
      Serial.println("getdata");
      return true;
  }
+/*
+*获取通信数据
+*阻塞
+*传入开始时间,超时返回true
+*/
+bool get_data_1(unsigned long startTime){
+    int i = 0;
+    while(true){
+        
+        //如果缓冲区有数据
+        if (Serial2.available() > 0){
 
+            //读取数据直到读完
+            while(Serial2.available() > 0){
+                UART_DATABUF[i] = Serial2.read();
+                i++;
+            }
+            //清空缓冲区
+            Serial2.flush();
+
+            return false;
+        }
+        if (millis() - startTime > 10000){
+            return true;
+        }
+
+    }
+
+}
 
 
 /*
@@ -4371,7 +5038,7 @@ bool decodes(){
         
         
         //解码# a123321 $
-        if (UART_DATABUF[i] == 35 && UART_DATABUF[i+1] == 97 &&  UART_DATABUF[i+8] == 36){
+        if (UART_DATABUF[i] == 35 && UART_DATABUF[i+1] == 97 &&  UART_DATABUF[i+8] == 36 && UART_SERVICE_A_FLAG){
             //confmCode:a
 
             decode_a(i);//数据解码存储
@@ -4389,6 +5056,8 @@ bool decodes(){
             // Serial.println("EEEEEEEEEEEEEEEEEEE");
             //缓冲区重置
             UART_DATA_FLUSH();
+            Serial2.flush();
+            UART_SERVICE_A_FLAG = false;
             return false;
 
         }
@@ -4399,21 +5068,29 @@ bool decodes(){
             
             //扫描下一个 36 '$'
             if (UART_DATABUF[i+2] == 36){
-                //切换状态,车辆移动至下一格子
-                //不可抓取
-                UART_DELTA[2] = 0;
+
+                //缓存清空
                 UART_DATA_FLUSH();
+                Serial2.flush();
                 return false;
             }
+
+
             //存放路径规划
             if (UART_DATABUF[i+1] == 98 && UART_DATABUF[i+5] == 36){
                 //解码存放
                 decode_b(i);
-                // UART_DELTA[2] = 1;
+
                 //更新路径
+                // dynamicGrabPlan();
+
+                //缓冲区清空
                 UART_DATA_FLUSH();
-                return false;
+                Serial2.flush();
+                //有规划返回false，开始下一个，反之继续等待
+                return dynamicGrabPlan();
             }
+
             //confmCode:b
 
         }
@@ -4424,7 +5101,90 @@ bool decodes(){
     }
     Serial.println("decoding error");
     UART_DATA_FLUSH();
+    Serial2.flush();
     
+    return true;
+}
+
+
+/*
+*数据解码
+*openmv控制机械臂抓取(通信协议2)
+*解码失败返回true
+*/
+bool decodes_1(){
+    int i = 0;
+    
+
+     Serial.println("enter decode");
+    while (UART_DATABUF[i] != 36 && i < 51){
+        
+        
+        
+        //解码# a123321 $
+        if (UART_DATABUF[i] == 35 && UART_DATABUF[i+1] == 97 &&  UART_DATABUF[i+8] == 36){
+            //confmCode:a
+
+            decode_a(i);//数据解码存储
+            
+
+            Serial.println("!!!!!!!!!!!!!!!!!!!");
+            Serial.println(UART_DATABUF[i]);
+            Serial.println(UART_DATABUF[i+1]);
+            Serial.println(UART_DATABUF[i+2]);
+            Serial.println(UART_DATABUF[i+3]);
+            Serial.println(UART_DATABUF[i+4]);
+            Serial.println(UART_DATABUF[i+5]);
+            Serial.println(UART_DATABUF[i+6]);
+            Serial.println(UART_DATABUF[i+7]);
+            Serial.println("EEEEEEEEEEEEEEEEEEE");
+            //缓冲区重置
+
+            UART_DATA_FLUSH();
+            //路径切换
+            // mps = mps -> next;
+            // mp = mps->head;
+            flagA = flagD = true;
+            return false;
+
+        }
+        //          #b$(扫描下一个)           #bxxx$(规划)
+        
+        //#b.................
+        if (UART_DATABUF[i] == 35 && UART_DATABUF[i+1] == 98 && (UART_DATABUF[i+2] == 36 || UART_DATABUF[i+5] == 36)){
+            
+            //扫描下一个 36 '$'
+            if (UART_DATABUF[i+2] == 36){
+
+                //缓存清空
+                UART_DATA_FLUSH();
+                // Serial2.flush();
+                flagA = flagD = true;
+                return false;
+            }
+
+
+            //存放路径规划
+            if (UART_DATABUF[i+1] == 98 && UART_DATABUF[i+5] == 36){
+                //解码存放
+                decode_b(i);
+                dynamicGrabPlan();
+
+                //缓冲区清空
+                UART_DATA_FLUSH();
+                //有规划返回false，开始下一个，反之继续等待
+                flagA = flagD = true;
+                return false;
+            }
+
+
+        }
+
+        i++;
+
+        
+    }
+    Serial.println("decoding error");
     return true;
 }
 
@@ -4440,9 +5200,8 @@ void reqs(char* req_code,char* resp_code){
         // Serial2.flush();
 
         Serial2.write(req_code,3);
-        delay(2);
         Serial.println("REQ_SCAN");
-        delay(2);
+
 
         
         //没有收到数据进行下一次循环
@@ -4460,6 +5219,33 @@ void reqs(char* req_code,char* resp_code){
 
 }
 
+
+//请求服务1,参数为请求码
+void reqs_1(char* req_code){ 
+    //循环标记位
+    bool flag = true;
+    unsigned long startTime = 0;
+    //获取开始时间
+    startTime = millis();
+
+    while(flag){
+
+        //发送请求
+        Serial2.write(req_code,3);
+
+        //阻塞等待数据
+        //如果超时，重新请求
+        if(get_data_1(startTime)){continue;}
+
+
+        //数据解码
+        //如果解码失败返回True，重新请求
+        flag = decodes_1();
+
+    }
+
+    
+}
 //任务码本地存储
 void decode_a(short i){
     //#a123321$
@@ -4472,15 +5258,15 @@ void decode_a(short i){
 
 
 
-    Serial.println("---------");
-    Serial.println(UART_TARGET[0]);
-    Serial.println(UART_TARGET[1]);
-    Serial.println(UART_TARGET[2]);
+    // Serial.println("---------");
+    // Serial.println(UART_TARGET[0]);
+    // Serial.println(UART_TARGET[1]);
+    // Serial.println(UART_TARGET[2]);
 
-    Serial.println(UART_TARGET[3]);
-    Serial.println(UART_TARGET[4]);
-    Serial.println(UART_TARGET[5]);
-    Serial.println("---------");
+    // Serial.println(UART_TARGET[3]);
+    // Serial.println(UART_TARGET[4]);
+    // Serial.println(UART_TARGET[5]);
+    // Serial.println("---------");
     
 
     // delay(100000);
@@ -4490,19 +5276,20 @@ void decode_a(short i){
 //反馈服务
 bool respServices(bool flag,char* resp_code){
     int i = 0;
-
+    //flag为false，则表明解码成功
     if(!flag){
-        while (i < 20)
+        while (i < 2000)
         {      
             Serial2.write(resp_code,4);
+            delay(2);
             i++;
             //中断服务加入特殊情况,如果收到openmv特殊请求,重新运行请求服务
         }
 
         Serial.println("respSer1");
         
-
-        return flag;
+        //返回的false跳出循环
+        return false;
     }
     Serial.println("respSer2");
     
@@ -4579,8 +5366,9 @@ void decode_b(int i){
 
     // #bxxx$
     UART_PLAN[0] = byte_decode(UART_DATABUF[i+2]);
-    UART_PLAN[0] = byte_decode(UART_DATABUF[i+3]);
-    UART_PLAN[0] = byte_decode(UART_DATABUF[i+4]);
+    UART_PLAN[1] = byte_decode(UART_DATABUF[i+3]);
+    UART_PLAN[2] = byte_decode(UART_DATABUF[i+4]);
+    Serial.println("local Saving plan.......");
 
 }
 
@@ -4670,6 +5458,34 @@ void acc(){
         MsTimer2::stop();
     }
 
+
+}
+
+
+void stpInt(){
+    if(currentStates == stp){
+
+    
+    setSpdA1(0);
+    setSpdA2(0);
+    setSpdB1(0);
+    setSpdB2(0);
+    motorA1();
+    motorA2();
+    motorB1();
+    motorB2();
+    delay(2);
+
+    motorA1PNS(S);
+    motorA2PNS(S);
+    motorB1PNS(S);
+    motorB2PNS(S);
+
+    setSpdA1(targetSpd);
+    setSpdA2(targetSpd);
+    setSpdB1(targetSpd);
+    setSpdB2(targetSpd);
+    }
 
 }
 
