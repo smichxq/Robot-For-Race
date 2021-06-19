@@ -1,19 +1,21 @@
 /*
-* 路径 1743
+*起点路径加了黑色胶带可以正常识别(蓝牙调试期间将第一个动作改为左)
+*离线将加入左直线模式
+*新增了特殊运动模式制动
+*中线停车判定条件改为或
+*待测试:一次完整动作
 */
 
 #include <LCDWIKI_GUI.h> //Core graphics library
 #include <LCDWIKI_SPI.h> //Hardware-specific library
 
-//paramters define
 #define MODEL ILI9225
-#define CS   A14
-#define RST  A13
-#define CD   A12
-#define SDA  A11
-
-#define SCK  A6
-#define LED  A5   //if you don't need to control the LED pin,you should set it to -1 and set it to 3.3V
+#define CS   53 
+#define CD   49 //RS
+#define RST  51
+#define SDA  47 //SDI
+#define SCK  45 //CLK
+#define LED  43   //if you don't need to control the LED pin,you should set it to -1 and set it to 3.3V
 
 //the definiens of software spi mode as follow:
 //if the IC model is known or the modules is unreadable,you can use this constructed function
@@ -30,58 +32,31 @@ LCDWIKI_SPI mylcd(MODEL,CS,CD,-1,SDA,RST,SCK,LED); //model,cs,dc,sdo,sda,reset,s
 
 
 
-short Left_FixA1 = 23;
-short Left_FixA2 = 0;
-short Left_FixB1 = 13;
-short Left_FixB2 = 30;
+short Left_FixA1 = 3.8;
+ short Left_FixA2 = 1.8;
+ short Left_FixB1 = 0;
+ short Left_FixB2 = 3;
 
 
 
-
-short Right_FixA1 = 16;
-short Right_FixA2 = 0;
-short Right_FixB1 = 16.5;
-short Right_FixB2 = 27.5;
-
-
-short Go_FixA1 = 0;
-short Go_FixA2 = 4;
-short Go_FixB1 = 0;
-short Go_FixB2 = 4;
+ short Right_FixA1 = 0;
+ short Right_FixA2 = 0.5;
+ short Right_FixB1 = 2.5;
+ short Right_FixB2 = 2;
 
 
 
-short Back_FixA1 = 0;
-short Back_FixA2 = 4.2;
-short Back_FixB1 = 0;
-short Back_FixB2 = 4.2;
-
-
-// short Left_FixA1 = 0;
-// short Left_FixA2 = 0;
-// short Left_FixB1 = 0;
-// short Left_FixB2 = 0;
+ short Go_FixA1 = 0;
+ short Go_FixA2 = 0.5;
+ short Go_FixB1 = 0;
+ short Go_FixB2 = 0.5;
 
 
 
-
-// short Right_FixA1 = 0;
-// short Right_FixA2 = 0;
-// short Right_FixB1 = 0;
-// short Right_FixB2 = 0;
-
-
-// short Go_FixA1 = 0;
-// short Go_FixA2 = 0;
-// short Go_FixB1 = 0;
-// short Go_FixB2 = 0;
-
-
-
-// short Back_FixA1 = 0;
-// short Back_FixA2 = 0;
-// short Back_FixB1 = 0;
-// short Back_FixB2 = 0;
+ short Back_FixA1 = 1.5;
+ short Back_FixA2 = 0;
+ short Back_FixB1 = 1.5;
+ short Back_FixB2 = 0;
 
 
 
@@ -121,7 +96,7 @@ short Back_FixB2 = 4.2;
 #define tickThreshold 5
 
 //速度
-int targetSpd = 80;
+int targetSpd = 70;
 
 //取样周期
 #define smpT 5
@@ -156,43 +131,79 @@ float Ek2_A1, Ek2_A2, Ek2_B1 ,Ek2_B2;                      //再前一次误差 
 
 
 //传感器接口
-#define SensorPinF_1 52
-#define SensorPinF_2 51 
-#define SensorPinF_3 50
+// #define SensorPinF_1 52
+// #define SensorPinF_2 51 
+// #define SensorPinF_3 50
 
-#define SensorPinR_1 49
-#define SensorPinR_2 48 
-#define SensorPinR_3 47 
+#define SensorPinF_1 A0
+#define SensorPinF_2 A1 
+#define SensorPinF_3 A2
 
-#define SensorPinB_1 46
-#define SensorPinB_2 45 
-#define SensorPinB_3 44 
+// #define SensorPinR_1 49
+// #define SensorPinR_2 48 
+// #define SensorPinR_3 47 
 
-#define SensorPinL_1 43
-#define SensorPinL_2 42 
-#define SensorPinL_3 41 
+#define SensorPinR_1 A3
+#define SensorPinR_2 A4
+#define SensorPinR_3 A5
+
+// #define SensorPinB_1 46
+// #define SensorPinB_2 45 
+// #define SensorPinB_3 44
+
+#define SensorPinB_1 A7
+#define SensorPinB_2 A8 
+#define SensorPinB_3 A9 
+
+// #define SensorPinL_1 43
+// #define SensorPinL_2 42 
+// #define SensorPinL_3 41 
+
+#define SensorPinL_1 A10
+#define SensorPinL_2 A11 
+#define SensorPinL_3 A12
 
 
 //电机接口
 // #define CodeA1 18
 #define MotorPin1 4
-#define Motor1Ain2 A1
-#define Motor1Ain1 A2
+
+// #define Motor1Ain2 A1
+#define Motor1Ain2 38
+
+// #define Motor1Ain1 A2
+#define Motor1Ain1 39
 
 // #define CodeA2 19
 #define MotorPin2 5
-#define Motor2Ain1 A3
-#define Motor2Ain2 A4
+
+// #define Motor2Ain1 A3
+#define Motor2Ain1 36
+
+// #define Motor2Ain2 A4
+#define Motor2Ain2 37
 
 // #define CodeB1 20
 #define MotorPin3 6
-#define Motor3Ain1 A8
-#define Motor3Ain2 A7
+
+// #define Motor3Ain1 A8
+#define Motor3Ain1 35
+
+// #define Motor3Ain2 A7
+#define Motor3Ain2 34
+
 
 // #define CodeB2 21
 #define MotorPin4 7
-#define Motor4Ain1 A9
-#define Motor4Ain2 A10
+
+// #define Motor4Ain1 A9
+#define Motor4Ain1 33
+
+// #define Motor4Ain2 A10
+#define Motor4Ain2 32
+
+//LEDLight
+#define LEDLightPin 31
 
 /*
 * 电机旋转方向
@@ -266,11 +277,8 @@ int UART_DELTA_VALUE[3];
 int UART_PLAN[3] = {0,0,0};//规划
 
 
-//服务标记位
-bool UART_SERVICE_A_FLAG = true;
-bool UART_SERVICE_B_FLAG = true;
-bool UART_SERVICE_C_FLAG = true;
-bool UART_SERVICE_D_FLAG = true;
+//抓取请求计数大于
+short grabReqCount = 0;
 
 /*===================================================UART===================================================*/
 
@@ -315,23 +323,23 @@ mission* mp = NULL;
 //boolean is1 = true;//标记位,用来判定是哪一侧先触线
 
 //其他传感器
-short Sensor_F_L = 1;
-short Sensor_F_R = 1;
+volatile short Sensor_F_L = 0;
+volatile short Sensor_F_R = 0;
 
-short Sensor_R_L = 1;
-short Sensor_R_R = 1;
+volatile short Sensor_R_L = 0;
+volatile short Sensor_R_R = 0;
 
-short Sensor_B_L = 1;
-short Sensor_B_R = 1;
+volatile short Sensor_B_L = 0;
+volatile short Sensor_B_R = 0;
 
-short Sensor_L_L = 1;
-short Sensor_L_R = 1;
+volatile short Sensor_L_L = 0;
+volatile short Sensor_L_R = 0;
 
 //中间传感器
-short Sensor_F_M = 1;
-short Sensor_R_M = 1;
-short Sensor_B_M = 1;
-short Sensor_L_M = 1;
+volatile short Sensor_F_M = 0;
+volatile short Sensor_R_M = 0;
+volatile short Sensor_B_M = 0;
+volatile short Sensor_L_M = 0;
 
 /*========================================================================偏移修正======================================================*/
 
@@ -339,7 +347,7 @@ short Sensor_L_M = 1;
 //前后 0.150
 //左右 0.1
 float FixFctr_GB = 0.40;
-float FixFctr_LR = 0.490;
+float FixFctr_LR = 0.890;
 //偏移修正控制因子
 bool ctrlFlag = true;
 bool SensorFlagL = false;
@@ -395,80 +403,28 @@ bool ctrl_flag = true;
 bool onef = true;
 
 short grab_plan_count = 0;
+//中线停车标记位
+bool mid_line_flag_A = false;
+bool mid_line_flag_B = false;
 
-
-
-LobotServoController myse(Serial3);//舵机控制
+// LobotServoController myse(Serial3);//舵机控制
 
 void setup() {
-    delay(20);
+    // delay(20);
     //显示屏初始化
     LEDInit();
     LEDCtrl("Spark",0,20,5,"krapS",0,90,5);
     sensorInit();
-
+    ledLightInit();
+    ledLightCtrlOpen(true);
+    delay(200);
+    ledLightCtrlOpen(false);
     // Serial.begin(9600);
     // Serial.println("Datatrans Ready!");
 
     mps = missionsInit();
     mp = mps->head;
 
-    // mp = T_Obj();
-    
-    // Serial.println("Datatrans Ready!");
-
-    // // while(mps){
-    //     while(mp){
-
-    //         if (!mp->next){
-
-    //             break;
-    //         }
-    //         Serial.println(mp->A,BIN);
-    //         Serial.println(mp->B,BIN);
-    //         Serial.println(mp->C,BIN);
-    //         Serial.println(mp->D,BIN);
-    //         Serial.println(mp->E,BIN);
-    //         Serial.println(mp->M,BIN);
-    //         Serial.println(mp->M_1,BIN);
-    //         Serial.println(mp->M_2,BIN);
-    //         Serial.println(mp->M_3,BIN);
-    //         Serial.println("===========================");
-    //         mp = mp->next;
-    //         delay(1111);
-    //     }
-
-    //     dynamicGrabPlan();
-    //     while(mp){
-
-    //         Serial.println(mp->A,BIN);
-    //         Serial.println(mp->B,BIN);
-    //         Serial.println(mp->C,BIN);
-    //         Serial.println(mp->D,BIN);
-    //         Serial.println(mp->E,BIN);
-    //         Serial.println(mp->M,BIN);
-    //         Serial.println(mp->M_1,BIN);
-    //         Serial.println(mp->M_2,BIN);
-    //         Serial.println(mp->M_3,BIN);
-    //         Serial.println("===========================");
-    //         mp = mp->next;
-
-    //     }
-    //     Serial.println("Dnoe");
-        
-    //     Serial.println("<><><><><><><><><><><><><><><><><<><<><<>");
-    //     mps = mps->next;
-    //     mp = mps->head;
-    // }
-
-    
-
-    
-
-    // Serial.println("Datatrans Done!");
-
-
-    // mp = scanTest();
     
     //BT
     Serial.begin(115200);
@@ -477,94 +433,48 @@ void setup() {
 
 
     //机械臂通信
-    Serial3.begin(9600);
-    //机械臂初始化
-    //openmv控制
-    myse.runActionGroup(0,1);
-    
+    // Serial3.begin(9600);
 
 
-    // delay(2000000);
+ IntServiceInit();
 
-//  IntServiceInit();
-  //前后 A2 +3 B2 +3
-  //左 A1 +7.2 B1 +4 B2 +7.2
-  //右 A1 +7.3 B1 +4.9 B2 +10.7
-  motorInit();
-  setSpdA1(targetSpd);
-  setSpdA2(targetSpd);
-  setSpdB1(targetSpd);
-  setSpdB2(targetSpd);
+   motorInit();
+   setSpdA1(targetSpd);
+   setSpdA2(targetSpd);
+   setSpdB1(targetSpd);
+   setSpdB2(targetSpd);
+
+   currentStates = Left;
+   delay(2000);
+   
 
 
 
-//   currentStates = goStraight;
-//   directions();
-//   delay(1000);
 
-//   currentStates = stp;
-//   directions();
-
-//   currentStates = goBack;
-//   directions();
-//   delay(1000);
-
-//   currentStates = stp;
-//   directions();
-//   delay(1000);
-
-//   currentStates = Left;
-//   directions();
-//   delay(1000);
-
-//   currentStates = stp;
-//   directions();
-//   delay(1000);
-
-//   currentStates = Right;
-//   directions();
-//   delay(1000);
-
-//   currentStates = stp;
-//   directions();
-//   delay(1000);
-
-
-
-//   BTCtrl();
-  Serial.println("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
-  delay(500);
+//   Serial.println("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+//   delay(500);
 
 }  
 
 void loop()
 {    
+    // BTCtrl();
 
-  /*
-  先使用路径规划pathPlan
-  再命令电机移动directions
-  */
-    BTCtrl();
     
-    // delay(1000);
-    // pathPlan();
-//   Serial.println(currentStates);
-// currentStates = goStraight;
+        
 
-    // if (mp->C){
-    //     Serial.println("STP!!!!!");
-    // }
-
-  
-    if (!ctrl_flag){
+      
+//    if (!ctrl_flag){
 
     pathPlan();
+    
     directions();
 
     stateFix();
     
         
-    }
+//    }
+ 
 
 
 
@@ -600,9 +510,9 @@ void LEDCtrl(char* MISSION_CODE_1, short x_1 ,short y_1, short size_1 ,char* MIS
  // mylcd.Print_Number_Int(0xDEADBEF, 0, 16, 0, ' ',16);
   
   //display 2 times string
-//   mylcd.Set_Text_colour(GREEN);
-//   mylcd.Set_Text_Size(8);//大小
-//   mylcd.Print_String("+", 50, 80);//50左右距离，80上下距离
+  mylcd.Set_Text_colour(GREEN);
+  mylcd.Set_Text_Size(2);//大小
+  mylcd.Print_String("+", 50, 80);//50左右距离，80上下距离
 //   mylcd.Print_Number_Float(01234.56789, 2, 0, 44, '.', 0, ' ');  
 //   mylcd.Print_Number_Int(0xDEADBEF, 0, 60, 0, ' ',16);
  
@@ -801,6 +711,30 @@ void UART_DELTA_PROC(double x,double h){
 
 
 }
+/*
+*led灯初始化
+*/
+void ledLightInit(){
+    pinMode(LEDLightPin,OUTPUT);
+    digitalWrite(LEDLightPin,LOW);
+
+}
+
+/*
+*输入true亮
+*控制LED亮灭
+*/
+void ledLightCtrlOpen(bool Ctrl){
+
+    if (!Ctrl){
+        digitalWrite(LEDLightPin,HIGH);
+
+    }
+    else{
+        digitalWrite(LEDLightPin,LOW);
+    }
+
+}
 
 /*
 * 输入：水平误差x(图像误差)
@@ -856,7 +790,8 @@ int UART_DELTA_PROC_V(int x){
 
 //测试路径
 mission* test(){
-  mission demo[39];
+
+  mission demo[40];
     //左直线模式
   demo[0].A = true;
   demo[0].B = false;
@@ -867,18 +802,17 @@ mission* test(){
   demo[0].M_1 = false;
   demo[0].M_2 = false;
   demo[0].M_3 = false;
-    //前
+    //停止
   demo[1].A = false;
   demo[1].B = false;
-  demo[1].C = false;
+  demo[1].C = true;
   demo[1].D = false;
   demo[1].E = false;
   demo[1].M = false;
   demo[1].M_1 = false;
   demo[1].M_2 = false;
-  demo[1].M_3 = false;  
-
-      //前
+  demo[1].M_3 = false;
+    //前
   demo[2].A = false;
   demo[2].B = false;
   demo[2].C = false;
@@ -898,7 +832,8 @@ mission* test(){
   demo[3].M = false;
   demo[3].M_1 = false;
   demo[3].M_2 = false;
-  demo[3].M_3 = false;
+  demo[3].M_3 = false;  
+
       //前
   demo[4].A = false;
   demo[4].B = false;
@@ -908,7 +843,7 @@ mission* test(){
   demo[4].M = false;
   demo[4].M_1 = false;
   demo[4].M_2 = false;
-  demo[4].M_3 = false;  
+  demo[4].M_3 = false;
       //前
   demo[5].A = false;
   demo[5].B = false;
@@ -918,7 +853,7 @@ mission* test(){
   demo[5].M = false;
   demo[5].M_1 = false;
   demo[5].M_2 = false;
-  demo[5].M_3 = false;
+  demo[5].M_3 = false;  
       //前
   demo[6].A = false;
   demo[6].B = false;
@@ -928,9 +863,9 @@ mission* test(){
   demo[6].M = false;
   demo[6].M_1 = false;
   demo[6].M_2 = false;
-  demo[6].M_3 = false; 
-      //左
-  demo[7].A = true;
+  demo[6].M_3 = false;
+      //前
+  demo[7].A = false;
   demo[7].B = false;
   demo[7].C = false;
   demo[7].D = false;
@@ -938,9 +873,8 @@ mission* test(){
   demo[7].M = false;
   demo[7].M_1 = false;
   demo[7].M_2 = false;
-  demo[7].M_3 = false;  
-
-        //左
+  demo[7].M_3 = false; 
+      //左
   demo[8].A = true;
   demo[8].B = false;
   demo[8].C = false;
@@ -984,16 +918,16 @@ mission* test(){
   demo[11].M_2 = false;
   demo[11].M_3 = false;  
 
-        //后
-  demo[12].A = false;
-  demo[12].B = true;
+        //左
+  demo[12].A = true;
+  demo[12].B = false;
   demo[12].C = false;
   demo[12].D = false;
   demo[12].E = false;
   demo[12].M = false;
   demo[12].M_1 = false;
   demo[12].M_2 = false;
-  demo[12].M_3 = false; 
+  demo[12].M_3 = false;  
 
         //后
   demo[13].A = false;
@@ -1017,8 +951,8 @@ mission* test(){
   demo[14].M_2 = false;
   demo[14].M_3 = false; 
 
-     //右
-  demo[15].A = true;
+        //后
+  demo[15].A = false;
   demo[15].B = true;
   demo[15].C = false;
   demo[15].D = false;
@@ -1028,28 +962,29 @@ mission* test(){
   demo[15].M_2 = false;
   demo[15].M_3 = false; 
 
-     //前
-  demo[16].A = false;
-  demo[16].B = false;
+     //右
+  demo[16].A = true;
+  demo[16].B = true;
   demo[16].C = false;
   demo[16].D = false;
   demo[16].E = false;
   demo[16].M = false;
   demo[16].M_1 = false;
   demo[16].M_2 = false;
-  demo[16].M_3 = false;
-     //右
-  demo[17].A = true;
-  demo[17].B = true;
+  demo[16].M_3 = false; 
+
+     //前
+  demo[17].A = false;
+  demo[17].B = false;
   demo[17].C = false;
   demo[17].D = false;
   demo[17].E = false;
   demo[17].M = false;
   demo[17].M_1 = false;
   demo[17].M_2 = false;
-  demo[17].M_3 = false; 
-    //后
-  demo[18].A = false;
+  demo[17].M_3 = false;
+     //右
+  demo[18].A = true;
   demo[18].B = true;
   demo[18].C = false;
   demo[18].D = false;
@@ -1058,9 +993,8 @@ mission* test(){
   demo[18].M_1 = false;
   demo[18].M_2 = false;
   demo[18].M_3 = false; 
-
-     //右
-  demo[19].A = true;
+    //后
+  demo[19].A = false;
   demo[19].B = true;
   demo[19].C = false;
   demo[19].D = false;
@@ -1070,9 +1004,9 @@ mission* test(){
   demo[19].M_2 = false;
   demo[19].M_3 = false; 
 
-     //前
-  demo[20].A = false;
-  demo[20].B = false;
+     //右
+  demo[20].A = true;
+  demo[20].B = true;
   demo[20].C = false;
   demo[20].D = false;
   demo[20].E = false;
@@ -1081,9 +1015,9 @@ mission* test(){
   demo[20].M_2 = false;
   demo[20].M_3 = false; 
 
-     //右
-  demo[21].A = true;
-  demo[21].B = true;
+     //前
+  demo[21].A = false;
+  demo[21].B = false;
   demo[21].C = false;
   demo[21].D = false;
   demo[21].E = false;
@@ -1092,8 +1026,8 @@ mission* test(){
   demo[21].M_2 = false;
   demo[21].M_3 = false; 
 
-    //后
-  demo[22].A = false;
+     //右
+  demo[22].A = true;
   demo[22].B = true;
   demo[22].C = false;
   demo[22].D = false;
@@ -1103,8 +1037,8 @@ mission* test(){
   demo[22].M_2 = false;
   demo[22].M_3 = false; 
 
-     //右
-  demo[23].A = true;
+    //后
+  demo[23].A = false;
   demo[23].B = true;
   demo[23].C = false;
   demo[23].D = false;
@@ -1114,9 +1048,9 @@ mission* test(){
   demo[23].M_2 = false;
   demo[23].M_3 = false; 
 
-       //前
-  demo[24].A = false;
-  demo[24].B = false;
+     //右
+  demo[24].A = true;
+  demo[24].B = true;
   demo[24].C = false;
   demo[24].D = false;
   demo[24].E = false;
@@ -1147,10 +1081,8 @@ mission* test(){
   demo[26].M_2 = false;
   demo[26].M_3 = false; 
 
-
-
-      //左
-  demo[27].A = true;
+       //前
+  demo[27].A = false;
   demo[27].B = false;
   demo[27].C = false;
   demo[27].D = false;
@@ -1158,9 +1090,11 @@ mission* test(){
   demo[27].M = false;
   demo[27].M_1 = false;
   demo[27].M_2 = false;
-  demo[27].M_3 = false;  
+  demo[27].M_3 = false; 
 
-        //左
+
+
+      //左
   demo[28].A = true;
   demo[28].B = false;
   demo[28].C = false;
@@ -1170,7 +1104,7 @@ mission* test(){
   demo[28].M_1 = false;
   demo[28].M_2 = false;
   demo[28].M_3 = false;  
-  
+
         //左
   demo[29].A = true;
   demo[29].B = false;
@@ -1181,7 +1115,7 @@ mission* test(){
   demo[29].M_1 = false;
   demo[29].M_2 = false;
   demo[29].M_3 = false;  
-
+  
         //左
   demo[30].A = true;
   demo[30].B = false;
@@ -1204,17 +1138,16 @@ mission* test(){
   demo[31].M_2 = false;
   demo[31].M_3 = false;  
 
-    //后
-  demo[32].A = false;
-  demo[32].B = true;
+        //左
+  demo[32].A = true;
+  demo[32].B = false;
   demo[32].C = false;
   demo[32].D = false;
   demo[32].E = false;
   demo[32].M = false;
   demo[32].M_1 = false;
   demo[32].M_2 = false;
-  demo[32].M_3 = false; 
-
+  demo[32].M_3 = false;  
 
     //后
   demo[33].A = false;
@@ -1227,6 +1160,7 @@ mission* test(){
   demo[33].M_2 = false;
   demo[33].M_3 = false; 
 
+
     //后
   demo[34].A = false;
   demo[34].B = true;
@@ -1238,7 +1172,7 @@ mission* test(){
   demo[34].M_2 = false;
   demo[34].M_3 = false; 
 
-      //后
+    //后
   demo[35].A = false;
   demo[35].B = true;
   demo[35].C = false;
@@ -1271,10 +1205,10 @@ mission* test(){
   demo[37].M_2 = false;
   demo[37].M_3 = false; 
 
-      //stp
+      //后
   demo[38].A = false;
-  demo[38].B = false;
-  demo[38].C = true;
+  demo[38].B = true;
+  demo[38].C = false;
   demo[38].D = false;
   demo[38].E = false;
   demo[38].M = false;
@@ -1282,14 +1216,19 @@ mission* test(){
   demo[38].M_2 = false;
   demo[38].M_3 = false; 
 
+      //stp
+  demo[39].A = false;
+  demo[39].B = false;
+  demo[39].C = true;
+  demo[39].D = false;
+  demo[39].E = false;
+  demo[39].M = false;
+  demo[39].M_1 = false;
+  demo[39].M_2 = false;
+  demo[39].M_3 = false; 
 
 
-
-
-
-
-
-  return createMissionList(39,demo);
+  return createMissionList(40,demo);
   
 }
 //蓝牙控制
@@ -1501,7 +1440,7 @@ void getCode(){
 
     
 
-    LEDCtrl(tempCode1,0,20,8,tempCode2,0,80,8);
+    LEDCtrl(tempCode1,0,20,5,tempCode2,0,120,5);
     // Serial.println("local Saving"");
 }
 
@@ -1538,16 +1477,20 @@ void sensorInit(){
 
 void motorInit(){
 
-  pinMode(A1,OUTPUT);
-  pinMode(A2,OUTPUT);
-  pinMode(A3,OUTPUT);
-  pinMode(A4,OUTPUT);
-  pinMode(A5,OUTPUT);
-  pinMode(A6,OUTPUT);
-  pinMode(A7,OUTPUT);
-  pinMode(A8,OUTPUT);
-  pinMode(A9,OUTPUT);
-  pinMode(A10,OUTPUT);
+    pinMode(MotorPin1,OUTPUT);
+    pinMode(MotorPin2,OUTPUT);
+    pinMode(MotorPin3,OUTPUT);
+    pinMode(MotorPin4,OUTPUT);
+
+
+    pinMode(Motor1Ain2,OUTPUT);
+    pinMode(Motor1Ain1,OUTPUT);
+    pinMode(Motor2Ain1,OUTPUT);
+    pinMode(Motor2Ain2,OUTPUT);
+    pinMode(Motor3Ain2,OUTPUT);
+    pinMode(Motor3Ain1,OUTPUT);
+    pinMode(Motor4Ain1,OUTPUT);
+    pinMode(Motor4Ain2,OUTPUT);
 
   //编码器外部中断
 //   pinMode(CodeA1,INPUT);
@@ -1560,6 +1503,7 @@ void motorInit(){
 * int.2 int.3 int.4 int.5
 *   21   20     19    18
 */
+
 //   attachInterrupt(5, isr0, CHANGE);
 //   attachInterrupt(4, isr1, CHANGE);
 //   attachInterrupt(3, isr2, CHANGE);
@@ -1572,7 +1516,7 @@ void motorInit(){
 //中断服务初始化
 
 void IntServiceInit(){
-    MsTimer2::set(5,LEDCtrl);
+    MsTimer2::set(smpT,IntService);
     MsTimer2::start();
 }
 
@@ -1941,8 +1885,11 @@ void directions(){
 
 
             
-            Sensor_F_M = digitalRead(SensorPinF_2);
-
+            // Sensor_F_M = digitalRead(SensorPinF_2);
+            setSpdA1(40);
+            setSpdA2(40);
+            setSpdB1(40);
+            setSpdB2(40);
 
             motorA1PNS(P);
             motorB1PNS(P);
@@ -1954,12 +1901,36 @@ void directions(){
             motorB1();
             motorB2();
             //压线
-            if (!Sensor_F_M){
+            if (!Sensor_F_M || !Sensor_F_R || !Sensor_F_L){
+                setSpdA1(0);
+                setSpdA2(0);
+                setSpdB1(0);
+                setSpdB2(0);
+                motorA1();
+
+                    
+                motorA2();
+
+                
+                motorB1();
+
+                
+                motorB2();
+
+                delay(200);
+
                 motorA1PNS(S);
                 motorA2PNS(S);
                 motorB1PNS(S);
                 motorB2PNS(S);
-                break;
+
+                setSpdA1(targetSpd);
+                setSpdA2(targetSpd);
+                setSpdB1(targetSpd);
+                setSpdB2(targetSpd);
+
+                
+                return;
             }
 
         }
@@ -1967,9 +1938,16 @@ void directions(){
         break;
      case mid_line_F:
         //printf("goStraight\n");
+        mid_line_flag_A = mid_line_flag_B = false;
         while (true){
-            Sensor_L_M = digitalRead(SensorPinF_2);
-            Sensor_R_M = digitalRead(SensorPinR_2);
+            // Sensor_L_M = digitalRead(SensorPinF_2);
+            // Sensor_R_M = digitalRead(SensorPinR_2);
+
+
+            setSpdA1(40);
+            setSpdA2(40);
+            setSpdB1(40);
+            setSpdB2(40);
 
             motorA1PNS(P);
             motorB1PNS(P);
@@ -1981,11 +1959,44 @@ void directions(){
             motorB1();
             motorB2();
             //压线
-            if (!Sensor_R_M && ! Sensor_L_M){
+
+            if (!Sensor_R_M){
+                mid_line_flag_A = true;
+            }
+            if (!Sensor_L_M){
+                mid_line_flag_B = true;
+            }
+
+            if (mid_line_flag_A && mid_line_flag_B){
+
+                setSpdA1(0);
+                setSpdA2(0);
+                setSpdB1(0);
+                setSpdB2(0);
+                motorA1();
+
+                    
+                motorA2();
+
+                
+                motorB1();
+
+                
+                motorB2();
+
+                delay(200);
+
                 motorA1PNS(S);
                 motorA2PNS(S);
                 motorB1PNS(S);
                 motorB2PNS(S);
+
+                setSpdA1(targetSpd);
+                setSpdA2(targetSpd);
+                setSpdB1(targetSpd);
+                setSpdB2(targetSpd);
+
+                flagA = flagD = true;
                 
 
                 break;
@@ -2017,7 +2028,7 @@ void directions(){
         //printf("goStraight\n");
         while (true){
             // Serial.println("!!!!!!!!!!!!!!!1");
-            Sensor_B_M = digitalRead(SensorPinB_2);
+            // Sensor_B_M = digitalRead(SensorPinB_2);
             
 
 
@@ -2025,6 +2036,10 @@ void directions(){
             motorA2PNS(N);
             motorB1PNS(N);
             motorB2PNS(N);
+            setSpdA1(40);
+            setSpdA2(40);
+            setSpdB1(40);
+            setSpdB2(40);
             motorA1();
 
             
@@ -2036,11 +2051,33 @@ void directions(){
             
             motorB2();
             //压线
-            if (!Sensor_B_M){
+            if (!Sensor_B_M || !Sensor_B_R || !Sensor_B_L){
+                setSpdA1(0);
+                setSpdA2(0);
+                setSpdB1(0);
+                setSpdB2(0);
+                motorA1();
+
+                    
+                motorA2();
+
+                
+                motorB1();
+
+                
+                motorB2();
+
+                delay(200);
+
                 motorA1PNS(S);
                 motorA2PNS(S);
                 motorB1PNS(S);
                 motorB2PNS(S);
+
+                setSpdA1(targetSpd);
+                setSpdA2(targetSpd);
+                setSpdB1(targetSpd);
+                setSpdB2(targetSpd);
                 break;
             }
 
@@ -2050,16 +2087,22 @@ void directions(){
 
     case mid_line_B:
         //printf("goStraight\n");
+        mid_line_flag_A = mid_line_flag_B = false;
         while (true){
             // Serial.println("!!!!!!!!!!!!!!!1");
 
 
-            Sensor_L_M = digitalRead(SensorPinL_2);
-            Sensor_R_M = digitalRead(SensorPinR_2);
+            // Sensor_L_M = digitalRead(SensorPinL_2);
+            // Sensor_R_M = digitalRead(SensorPinR_2);
             motorA1PNS(N);
             motorA2PNS(N);
             motorB1PNS(N);
             motorB2PNS(N);
+
+            setSpdA1(40);
+            setSpdA2(40);
+            setSpdB1(40);
+            setSpdB2(40);
             motorA1();
 
             
@@ -2070,12 +2113,45 @@ void directions(){
 
             
             motorB2();
+
+
             //压线
-            if (!Sensor_L_M && !Sensor_R_M){
+            if (!Sensor_L_M){
+                mid_line_flag_A = true;
+
+            }
+
+            if (!Sensor_R_M){
+                mid_line_flag_B = true;
+            }
+            if (mid_line_flag_B && mid_line_flag_A){
+                setSpdA1(0);
+                setSpdA2(0);
+                setSpdB1(0);
+                setSpdB2(0);
+                motorA1();
+
+                    
+                motorA2();
+
+                
+                motorB1();
+
+                
+                motorB2();
+
+                delay(200);
+
                 motorA1PNS(S);
                 motorA2PNS(S);
                 motorB1PNS(S);
                 motorB2PNS(S);
+
+                setSpdA1(targetSpd);
+                setSpdA2(targetSpd);
+                setSpdB1(targetSpd);
+                setSpdB2(targetSpd);
+                flagA = flagD = true;
                 break;
             }
 
@@ -2104,12 +2180,17 @@ void directions(){
      case micro_line_L:
         //printf("goStraight\n");
         while(true){
-            Sensor_L_M = digitalRead(SensorPinL_2);
+            // Sensor_L_M = digitalRead(SensorPinL_2);
 
             motorA1PNS(N);
             motorA2PNS(P);
             motorB1PNS(P);
             motorB2PNS(N);
+
+            setSpdA1(40);
+            setSpdA2(40);
+            setSpdB1(40);
+            setSpdB2(40);
 
             motorA1();
 
@@ -2122,28 +2203,57 @@ void directions(){
             
             motorB2();
 
-            if(!Sensor_L_M){
+            if(!Sensor_L_M || !Sensor_L_R || !Sensor_L_L){
+
+                setSpdA1(0);
+                setSpdA2(0);
+                setSpdB1(0);
+                setSpdB2(0);
+                
+                motorA1();
+                
+                motorA2();
+                
+                motorB1();
+                
+                motorB2();
+                delay(200);
+
                 motorA1PNS(S);
                 motorA2PNS(S);
                 motorB1PNS(S);
-                motorB2PNS(S);
+                motorB2PNS(S);  
+
+                setSpdA1(targetSpd);
+                setSpdA2(targetSpd);
+                setSpdB1(targetSpd);
+                setSpdB2(targetSpd);             
+
                 break;
             }
         }
+        
+//        Serial.println("out!!!!!!");
         
         break;
 
      case mid_line_L:
         //printf("goStraight\n");
+        mid_line_flag_A = mid_line_flag_B = false;
         while(true){
             
-        Sensor_F_M = digitalRead(SensorPinF_2);
-        Sensor_B_M = digitalRead(SensorPinB_2);
+        // Sensor_F_M = digitalRead(SensorPinF_2);
+        // Sensor_B_M = digitalRead(SensorPinB_2);
 
             motorA1PNS(N);
             motorA2PNS(P);
             motorB1PNS(P);
             motorB2PNS(N);
+
+            setSpdA1(40);
+            setSpdA2(40);
+            setSpdB1(40);
+            setSpdB2(40);
 
             motorA1();
 
@@ -2156,11 +2266,42 @@ void directions(){
             
             motorB2();
 
-            if(!Sensor_F_M && !Sensor_B_M){
+            if (!Sensor_F_M){
+                mid_line_flag_A = true;
+            }
+
+            if (!Sensor_B_M){
+                mid_line_flag_B = true;
+            }
+
+            if(mid_line_flag_A && mid_line_flag_B){
+                setSpdA1(0);
+                setSpdA2(0);
+                setSpdB1(0);
+                setSpdB2(0);
+                motorA1();
+
+                    
+                motorA2();
+
+                
+                motorB1();
+
+                
+                motorB2();
+
+                delay(200);
+
                 motorA1PNS(S);
                 motorA2PNS(S);
                 motorB1PNS(S);
                 motorB2PNS(S);
+
+                setSpdA1(targetSpd);
+                setSpdA2(targetSpd);
+                setSpdB1(targetSpd);
+                setSpdB2(targetSpd);
+                flagA = flagD = true;
                 break;
             }
         }
@@ -2191,13 +2332,19 @@ void directions(){
 
         while (true)
         {
-            Sensor_R_M = digitalRead(SensorPinR_2);
+            // Sensor_R_M = digitalRead(SensorPinR_2);
         
         
             motorA1PNS(P);
             motorA2PNS(N);
             motorB1PNS(N);
             motorB2PNS(P);
+
+            setSpdA1(40);
+            setSpdA2(40);
+            setSpdB1(40);
+            setSpdB2(40);
+
             motorA1();
 
         
@@ -2209,11 +2356,33 @@ void directions(){
             
             motorB2();
 
-            if(!Sensor_R_M){
+            if(!Sensor_R_M || !Sensor_R_R || !Sensor_R_L){
+                setSpdA1(0);
+                setSpdA2(0);
+                setSpdB1(0);
+                setSpdB2(0);
+                motorA1();
+
+                    
+                motorA2();
+
+                
+                motorB1();
+
+                
+                motorB2();
+
+                delay(200);
+
                 motorA1PNS(S);
                 motorA2PNS(S);
                 motorB1PNS(S);
                 motorB2PNS(S);
+
+                setSpdA1(targetSpd);
+                setSpdA2(targetSpd);
+                setSpdB1(targetSpd);
+                setSpdB2(targetSpd);
                 break;
 
             }
@@ -2223,18 +2392,23 @@ void directions(){
 
    case mid_line_R:
         //printf("goStraight\n");
+        mid_line_flag_A = mid_line_flag_B = false;
 
         while (true)
         {
 
-            Sensor_F_M = digitalRead(SensorPinF_2);
-            Sensor_B_M = digitalRead(SensorPinB_2);
+            // Sensor_F_M = digitalRead(SensorPinF_2);
+            // Sensor_B_M = digitalRead(SensorPinB_2);
 
         
             motorA1PNS(P);
             motorA2PNS(N);
             motorB1PNS(N);
             motorB2PNS(P);
+            setSpdA1(40);
+            setSpdA2(40);
+            setSpdB1(40);
+            setSpdB2(40);
             motorA1();
 
         
@@ -2246,11 +2420,41 @@ void directions(){
             
             motorB2();
 
-            if(!Sensor_F_M && !Sensor_B_M){
+            if (!Sensor_F_M){
+                mid_line_flag_A = true;
+            }
+            if (!Sensor_B_M){
+                mid_line_flag_B = true;
+            }
+
+            if(mid_line_flag_B && mid_line_flag_A){
+                setSpdA1(0);
+                setSpdA2(0);
+                setSpdB1(0);
+                setSpdB2(0);
+                motorA1();
+
+                    
+                motorA2();
+
+                
+                motorB1();
+
+                
+                motorB2();
+
+                delay(200);
+
                 motorA1PNS(S);
                 motorA2PNS(S);
                 motorB1PNS(S);
                 motorB2PNS(S);
+
+                setSpdA1(targetSpd);
+                setSpdA2(targetSpd);
+                setSpdB1(targetSpd);
+                setSpdB2(targetSpd);
+                flagA = flagD = true;
                 break;
 
             }
@@ -2259,6 +2463,7 @@ void directions(){
         break;
 
     case stp:
+        Serial.println("STP!!!!!!!!!!!");
         setSpdA1(0);
         setSpdA2(0);
         setSpdB1(0);
@@ -2267,7 +2472,7 @@ void directions(){
         motorA2();
         motorB1();
         motorB2();
-        delay(200);
+        delay(300);
 
         motorA1PNS(S);
         motorA2PNS(S);
@@ -2278,6 +2483,7 @@ void directions(){
         setSpdA2(targetSpd);
         setSpdB1(targetSpd);
         setSpdB2(targetSpd);
+
 
         break;
 
@@ -2577,23 +2783,7 @@ void pathPlan()
 
 
   //判断是否经过方格
-    Sensor_F_L = digitalRead(SensorPinF_1);
-    Sensor_F_R = digitalRead(SensorPinF_3);
 
-    Sensor_B_L = digitalRead(SensorPinB_1);
-    Sensor_B_R = digitalRead(SensorPinB_3);
-
-    Sensor_L_L = digitalRead(SensorPinL_1);
-    Sensor_L_R = digitalRead(SensorPinL_3);
-
-    Sensor_R_L = digitalRead(SensorPinR_1);
-    Sensor_R_R = digitalRead(SensorPinR_3);
-
-    Sensor_F_M = digitalRead(SensorPinF_2);
-    Sensor_B_M = digitalRead(SensorPinB_2);
-
-    Sensor_L_M = digitalRead(SensorPinL_2);
-    Sensor_R_M = digitalRead(SensorPinR_2);
 
   
 
@@ -2602,6 +2792,7 @@ void pathPlan()
   //经过方格，移动到下一个路径
   if (flagA && flagD)
   {
+    // Serial.println(currentStates);
     mp = mp->next;
     flagA = false;
     flagB = false;
@@ -2611,14 +2802,23 @@ void pathPlan()
 
     //内存溢出保护
     if (mp == NULL){
+        Serial.println("内存溢出");
         Listflag = false;
         currentStates = stp;
-        mps = mps->next;
-        mp = mps->head;
+        // mps = mps->next;
+        // mp = mps->head;
     }
   }
   
-
+    //前侧压线  如果下一个方向与当前方向不同
+//   if (flagA && (mp->next->A) && mp->A || (mp->next->B) && mp->B && mp->next){
+//       //过线减速防止前侧超出当前方格
+//       setSpdA1(targetSpd - 30);
+//       setSpdA2(targetSpd - 30);
+//       setSpdB1(targetSpd - 30);
+//       setSpdB2(targetSpd - 30);
+      
+//   }
   
   
   
@@ -2641,6 +2841,7 @@ void pathPlan()
       micro_line_flag = false;
       mid_line_flag = false;
     }
+
     //左
     if (mp->A && !(mp->B) && Listflag)
     {
@@ -2649,6 +2850,7 @@ void pathPlan()
        micro_line_flag = false;
        mid_line_flag = false;
     }
+
     //右
     if (mp->A && mp->B && Listflag)
     {
@@ -2657,6 +2859,7 @@ void pathPlan()
        micro_line_flag = false;
        mid_line_flag = false;
     }
+
     //停止
     if (mp->C)
     {
@@ -2664,7 +2867,8 @@ void pathPlan()
          micro_line_flag = false;
          mid_line_flag = false;
         //停止后可能会一侧越线所以提前置位
-         flagA = true;
+        //  flagA = true;
+//        Serial.println("stp!");
     }
 
 
@@ -2703,11 +2907,13 @@ void pathPlan()
       mid_flag_F = true;
       currentStates = mid_line_F;
     }
+
     //中线模式 后
     if (mp->E && !(mp->A) && mp->B){
       mid_flag_B = true;
       currentStates = mid_line_B;
     }
+    
     //中线模式 左
     if (mp->E && mp->A && !(mp->B)){
       mid_flag_L = true;
@@ -2742,13 +2948,14 @@ void pathPlan()
   
   //上次状态为特殊模式
 
-
-    if (Sensor_F_M == 0)
+    //将单个过线检测增加为多个传感器
+    if (Sensor_F_M == 0 || Sensor_F_L == 0 || Sensor_F_R == 0)
     {
-      flagA = true;
+        flagA = true;
+    //   flagB = false;
     }
 
-    if (Sensor_B_M == 0 && flagA)
+    if ((Sensor_B_M == 0 || Sensor_B_L == 0 || Sensor_B_R == 0) && flagA)
     
     {
         //tick-mpwm表
@@ -2775,16 +2982,18 @@ void pathPlan()
         // }
     }
     break;
+
+    
   case goBack:
 
   //上次状态为特殊模式
 
-    if (Sensor_B_M == 0)
+    if (Sensor_B_M == 0 || Sensor_B_L == 0 || Sensor_B_R == 0)
     {
       flagA = true;
     }
 
-    if (Sensor_F_M == 0 && flagA)
+    if ((Sensor_F_M == 0 || Sensor_F_L == 0 || Sensor_F_R == 0) && flagA)
     // if (Sensor_F_M == 0)
     {
         // flagA = true;//测试后删掉
@@ -2813,12 +3022,12 @@ void pathPlan()
   case Left:
 
   //上次状态为特殊模式
-    if (Sensor_L_M == 0)
+    if (Sensor_L_M == 0 || Sensor_L_R == 0 || Sensor_L_L == 0)
     {
       flagA = true;
     }
 
-    if (Sensor_R_M == 0 && flagA)
+    if ((Sensor_R_M == 0 || Sensor_R_L == 0 || Sensor_R_R == 0) && flagA)
     // if (Sensor_R_M == 0)
     {
         // flagA = true;//测试后删掉
@@ -2846,11 +3055,11 @@ void pathPlan()
   case Right:
 
   //上次状态为特殊模式
-    if (Sensor_R_M == 0)
+    if ((Sensor_R_M == 0 || Sensor_R_L == 0 || Sensor_R_R == 0))
     {
       flagA = true;
     }
-    if (Sensor_L_M == 0 && flagA)
+    if ((Sensor_L_M == 0 || Sensor_L_L == 0 || Sensor_L_R == 0) && flagA)
     {
         // flagA = true;//测试后删掉
         flagB =true;
@@ -2882,29 +3091,31 @@ void pathPlan()
   //压线模式
   case micro_line_F:
   //碰线,状态切换
-    if (!Sensor_F_M){
+    if (!Sensor_F_M || !Sensor_F_L || !Sensor_F_R){
       flagA = flagD = true;
+    //   Serial.println("进入前压线模式");
       
     }
     break;
   case micro_line_B:
   //碰线,路径切换
-    if (!Sensor_B_M){
+    if (!Sensor_B_M || !Sensor_B_R || !Sensor_B_L){
       flagA = flagD = true;
     }
     break;
     
   case micro_line_L:
   //碰线,切换下一个状态
-    if (!Sensor_L_M){
+    if (!Sensor_L_M || !Sensor_L_L || !Sensor_L_R){
       flagA = flagD = true;
+//      Serial.println("nextState");
       
       
     }
      break;
   case micro_line_R:
   //碰线,切换下一个状态
-    if (!Sensor_R_M){
+    if (!Sensor_R_M || !Sensor_R_R || !Sensor_R_L){
       flagA = flagD = true;
       
     }
@@ -2914,37 +3125,44 @@ void pathPlan()
     //中线模式
   case mid_line_F:
   //碰线,路径切换
-    if (!Sensor_L_M || !Sensor_R_M){
-      flagA = flagD = true;
+    // if (!Sensor_L_M || !Sensor_R_M){
+    //   flagA = flagD = true;
       
-    }
+    // }
     break;
   case mid_line_B:
   //碰线,路径切换
-    if (!Sensor_L_M || !Sensor_R_M){
-      flagA = flagD = true;
-    }
+    // if (!Sensor_L_M || !Sensor_R_M){
+    //   flagA = flagD = true;
+    // }
     break;
     
   case mid_line_L:
   //碰线,切换下一个状态
-    if (!Sensor_F_M || !Sensor_B_M){
-      flagA = flagD = true;
+    // if (!Sensor_F_M || !Sensor_B_M){
+    //   flagA = flagD = true;
       
-    }
+    // }
      break;
   case mid_line_R:
   //碰线,切换下一个状态
-    if (!Sensor_B_M || !Sensor_F_M){
-      flagA = flagD = true;
-    }
+    // if (!Sensor_B_M || !Sensor_F_M){
+    //   flagA = flagD = true;
+    // }
     break;
     
   default:
     break;
   }
 
+    //过线减速
+    // if (flagD){
 
+    //     setSpdA1(targetSpd);
+    //     setSpdA2(targetSpd);
+    //     setSpdB1(targetSpd);
+    //     setSpdB2(targetSpd);
+    // }
 
 
 
@@ -2957,9 +3175,9 @@ void pathPlan()
         //扫码请求
         // Serial.println("mission Mode");
         if ( !(mp->M_1) && !(mp->M_2) && !(mp->M_3) ){
-            // // if (1){
+            // if (1){
             // //机械臂动作
-            // Serial.println("ArmAct");
+            Serial.println("SCAN_mp->req");
             // // int i = 22500;
             // myse.runActionGroup(1,1);
             // delay(2000);
@@ -2989,9 +3207,12 @@ void pathPlan()
             // myse.runActionGroup(1,1);
             // directions();
             // delay(2000);
-
+            // Serial.println("enter Scan Req.....");
+            //加入电机控制防止因阻塞造成的电机状态切换失败
+            directions();
             //扫码请求
             reqs_1("#A$");
+            
 
             //收回动作openmv控制
 
@@ -3010,10 +3231,11 @@ void pathPlan()
         //     return;
         // }
 
-        //抓取请求
+        //抓取请求上层
         if ( !(mp->M_1) && !(mp->M_2) && mp->M_3){
             // grab_plan_count++;
-            // Serial.println("请求抓取");
+            Serial.println("请求抓取");
+            // int i = 0;
 
             // //扫描
             // myse.runActionGroup(3,1);
@@ -3037,15 +3259,56 @@ void pathPlan()
             // //切换路径有两个方法，一个是主动使用指针切换，一个是自动切换任务
             // flagA = flagD = true;//单次任务路径切换启用
 
-/*--------------------优化后的通信模块-----------------------*/
-            Serial.println("请求抓取");
-            // myse.runActionGroup(3,1);
-            // directions();
+
+            UART_DATA_FLUSH();
+
+            directions();
+            ledLightCtrlOpen(true);
             // delay(10000);
             reqs_1("#B$");
+            ledLightCtrlOpen(false);
+            
+            return;
+            
             
 
-    }
+        }
+    
+    
+        //粗加工区请求放置
+        if ((mp->M_1) && !(mp->M_2) && !(mp->M_3)){
+            Serial.println("粗加工区放置请求");
+            UART_DATA_FLUSH();
+            directions();
+            ledLightCtrlOpen(true);
+            reqs_1("#C$");
+            ledLightCtrlOpen(false);
+            return;
+        }
+
+        //粗加工区请求抓取
+        if (!(mp->M_1) && (mp->M_2) && (mp->M_3)){
+            Serial.println("粗加工区抓取请求");
+            UART_DATA_FLUSH();
+            directions();
+            ledLightCtrlOpen(true);
+            reqs_1("#F$");
+            ledLightCtrlOpen(false);
+            return;
+        }
+
+        //半成品区请求放置
+        if ((mp->M_1) && !(mp->M_2) && (mp->M_3)){
+            Serial.println("半成品区放置请求");
+            UART_DATA_FLUSH();
+            directions();
+            ledLightCtrlOpen(true);
+            reqs_1("#D$");
+            ledLightCtrlOpen(false);
+            return;
+        }
+        //物块下层抓取请求
+        
     
 /*===========================任务规划==================================*/
 
@@ -3092,30 +3355,20 @@ mission* S_Code(){
   demo[2].M_1 = false;
   demo[2].M_2 = false;
   demo[2].M_3 = false;
-  //R-Line
+
+  //扫码请求
   demo[3].A = false;
-  demo[3].B = true;
-  demo[3].C = false;
-  demo[3].D = true;
+  demo[3].B = false;
+  demo[3].C = true;
+  demo[3].D = false;
   demo[3].E = false;
-  demo[3].M = false;
+  demo[3].M = true;
   demo[3].M_1 = false;
   demo[3].M_2 = false;
   demo[3].M_3 = false;
 
-  //扫码请求
-  demo[4].A = false;
-  demo[4].B = false;
-  demo[4].C = true;
-  demo[4].D = false;
-  demo[4].E = false;
-  demo[4].M = true;
-  demo[4].M_1 = false;
-  demo[4].M_2 = false;
-  demo[4].M_3 = false;
 
-
-  return createMissionList(5,demo);
+  return createMissionList(4,demo);
   
 }
 
@@ -3169,30 +3422,6 @@ mission* T_Obj1(){
   demo[3].M_2 = false;
   demo[3].M_3 = true;
 
-
-
-//   //Front-Mid-Line
-//   demo[3].A = false;
-//   demo[3].B = false;
-//   demo[3].C = false;
-//   demo[3].D = false;
-//   demo[3].E = true;
-//   demo[3].M = false;
-//   demo[3].M_1 = false;
-//   demo[3].M_2 = false;
-//   demo[3].M_3 = false;
-
-
-//   //Stop-REQ-Grub
-//   demo[4].A = false;
-//   demo[4].B = false;
-//   demo[4].C = true;
-//   demo[4].D = false;
-//   demo[4].E = false;
-//   demo[4].M = true;
-//   demo[4].M_1 = false;
-//   demo[4].M_2 = false;
-//   demo[4].M_3 = true;
 
 
 
@@ -3251,30 +3480,6 @@ mission* T_Obj2(){
 
 
 
-//   //Front-Mid-Line
-//   demo[3].A = false;
-//   demo[3].B = false;
-//   demo[3].C = false;
-//   demo[3].D = false;
-//   demo[3].E = true;
-//   demo[3].M = false;
-//   demo[3].M_1 = false;
-//   demo[3].M_2 = false;
-//   demo[3].M_3 = false;
-
-
-//   //Stop-REQ-Grub
-//   demo[4].A = false;
-//   demo[4].B = false;
-//   demo[4].C = true;
-//   demo[4].D = false;
-//   demo[4].E = false;
-//   demo[4].M = true;
-//   demo[4].M_1 = false;
-//   demo[4].M_2 = false;
-//   demo[4].M_3 = true;
-
-
 
   return createMissionList(4,demo);
   
@@ -3285,10 +3490,10 @@ mission* T_Obj2(){
     //粗加工区1
 mission* P_Obj1(){
     
-  mission demo[3];
-  //R
-  demo[0].A = false;
-  demo[0].B = true;
+  mission demo[4];
+  //L
+  demo[0].A = true;
+  demo[0].B = false;
   demo[0].C = false;
   demo[0].D = false;
   demo[0].E = false;
@@ -3296,9 +3501,9 @@ mission* P_Obj1(){
   demo[0].M_1 = false;
   demo[0].M_2 = false;
   demo[0].M_3 = false;
-  //F
-  demo[1].A = false;
-  demo[1].B = true;
+  //L
+  demo[1].A = true;
+  demo[1].B = false;
   demo[1].C = false;
   demo[1].D = false;
   demo[1].E = false;
@@ -3306,10 +3511,10 @@ mission* P_Obj1(){
   demo[1].M_1 = false;
   demo[1].M_2 = false;
   demo[1].M_3 = false;
-  //F
-  demo[2].A = false;
+  //L
+  demo[2].A = true;
   demo[2].B = false;
-  demo[2].C = true;
+  demo[2].C = false;
   demo[2].D = false;
   demo[2].E = false;
   demo[2].M = false;
@@ -3317,7 +3522,20 @@ mission* P_Obj1(){
   demo[2].M_2 = false;
   demo[2].M_3 = false;
 
-    return createMissionList(3,demo);
+    //STP
+  demo[3].A = false;
+  demo[3].B = false;
+  demo[3].C = true;
+  demo[3].D = false;
+  demo[3].E = false;
+  demo[3].M = false;
+  demo[3].M_1 = false;
+  demo[3].M_2 = false;
+  demo[3].M_3 = false;
+
+
+
+    return createMissionList(4,demo);
 }
 
     //粗加工区2
@@ -3334,8 +3552,3143 @@ mission* D_Obj1(){
 mission* D_Obj2(){
     return NULL;
 }
+
+//放置路径-粗加工-半成品-抓取前一格子(放置增加了line模式)
+mission* dynamicPlan_123(){
+    mission demo[39];
+    int i = 0;
+
+   //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+   //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+/*------------------------------增加了放置前Front-Line---------------------*/
+    //Front-Line
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+/*------------------------------增加了放置前Front-Line---------------------*/
+
+    //Stp-REQ-Put(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Left-Mid-Line
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = true;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+
+
+    //Stp-REQ-Put(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Left-Line
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ-Put(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ-Grab(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = false;
+    demo[i].M_2 = true;
+    demo[i].M_3 = true;
+    i++;
+
+    //Left-Mid-Line
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = true;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ-Grab(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = false;
+    demo[i].M_2 = true;
+    demo[i].M_3 = true;
+    i++;
+
+    //Left-Line
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ-Grab(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = false;
+    demo[i].M_2 = true;
+    demo[i].M_3 = true;
+    i++;
+
+    //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ_Put(半成品)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = true;
+    i++;
+
+    //Back-Mid-Line
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = true;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ_Put(半成品)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = true;
+    i++;
+
+    //Back-Line
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ_Put(半成品)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = true;
+
+    i++;
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+
+    //Front
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Back
+    i++;
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Back
+    i++;
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+        //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    // Serial.println("动态放置路径已规划");
+
+    return createMissionList(39,demo);
+
+    //RightX5
+    //front详见onenote
+
+}
+
+
+//放置路径粗加工-半成品-抓取前一格子(放置增加了line模式)
+mission* dynamicPlan_132(){
+    mission demo[40];
+    int i = 0;
+        //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+        //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Front-Line
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ-Put(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Left-Mid-Line
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = true;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+    
+    //Stp-REQ-Put(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+    //Left-Line
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ-Put(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right-Line
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ-Grab(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = false;
+    demo[i].M_2 = true;
+    demo[i].M_3 = true;
+    i++;
+
+    //Left-Mid-Line
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = true;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+
+     //Stp-REQ-Grab(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = false;
+    demo[i].M_2 = true;
+    demo[i].M_3 = true;
+    i++;
+
+    //Left-Line
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+     //Stp-REQ-Grab(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = false;
+    demo[i].M_2 = true;
+    demo[i].M_3 = true;
+    i++;    
+
+
+    //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+
+    //Stp-REQ_Put(半成品)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = true;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ_Put(半成品)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = true;
+    i++;
+
+
+    //Front-Mid-Line
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = true;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ_Put(半成品)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = true;
+    i++;
+
+
+
+    //Back-Line
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    i++;
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+
+    //Front
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Back
+    i++;
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Back
+    i++;
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+        //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    
+    return createMissionList(40,demo);
+    //加入相同路径,详见onenote红色路径
+
+
+}
+
+//放置路径粗加工-半成品-抓取前一格子
+mission* dynamicPlan_213(){
+
+    mission demo[39];
+    int i = 0;
+        //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+    //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ-Put(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+     //Right-Line
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+     //Stp-REQ-Put(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+     //Stp-REQ-Put(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right-Mid-Line
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = true;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ-Grab(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = false;
+    demo[i].M_2 = true;
+    demo[i].M_3 = true;
+    i++;
+
+    //Right-Line
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ-Grab(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = false;
+    demo[i].M_2 = true;
+    demo[i].M_3 = true;
+    i++;
+
+     //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;   
+
+    //Stp-REQ-Grab(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = false;
+    demo[i].M_2 = true;
+    demo[i].M_3 = true;
+    i++;
+
+    //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back-Mid-Line
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = true;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ_Put(半成品)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = true;
+    i++;
+    //Front-Line
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+    //Stp-REQ_Put(半成品)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = true;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+    //Stp-REQ_Put(半成品)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = true;
+
+    i++;
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+
+    //Front
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Back
+    i++;
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Back
+    i++;
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+        //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    return createMissionList(38,demo);
+//同上
+
+    
+
+
+
+}
+
+//放置路径粗加工-半成品-抓取前一格子
+mission* dynamicPlan_231(){
+    mission demo[42];
+    short i = 0;
+        //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+        //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Left-Mid-Line
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = true;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ-Put(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Left-Line
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ-Put(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ-Put(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Left-Mid-Line
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = true;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+     //Stp-REQ-Grab(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = false;
+    demo[i].M_2 = true;
+    demo[i].M_3 = true;
+    i++;
+
+    //Left-Line
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+     //Stp-REQ-Grab(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = false;
+    demo[i].M_2 = true;
+    demo[i].M_3 = true;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+      //Stp-REQ-Grab(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = false;
+    demo[i].M_2 = true;
+    demo[i].M_3 = true;
+    i++;    
+
+    //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+     //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+     //Back-Mid-Line
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = true;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+    //Stp-REQ_Put(半成品)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = true;
+    i++;
+
+    //Back-Line
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ_Put(半成品)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = true;
+    i++;
+    //Front
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+     //Stp-REQ_Put(半成品)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = true;
+    i++;
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+
+    i++;
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+
+    //Front
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Back
+    i++;
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Back
+    i++;
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+        //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    return createMissionList(42,demo);       
+      
+}
+
+//放置路径粗加工-半成品-抓取前一格子
+mission* dynamicPlan_312(){
+    mission demo[42];
+    int i = 0;
+        //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+        //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+        //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ-Put(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+   //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ-Put(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+    //Left-Mid-Line
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = true;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+    //Stp-REQ-Put(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Left-Line
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ-Grab(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = false;
+    demo[i].M_2 = true;
+    demo[i].M_3 = true;
+    i++;
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+     //Stp-REQ-Grab(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = false;
+    demo[i].M_2 = true;
+    demo[i].M_3 = true;
+    i++;
+
+    //Left-Mid-Line
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = true;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+     //Stp-REQ-Grab(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = false;
+    demo[i].M_2 = true;
+    demo[i].M_3 = true;
+    i++;
+
+    //Left-Line
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+   
+
+    //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ_Put(半成品)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = true;
+    i++;
+    //Front
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+    //Stp-REQ_Put(半成品)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = true;
+    i++;
+
+  //Back-Mid-Line
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = true;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ_Put(半成品)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = true;
+    i++;
+
+    //Back-Line
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+
+    //Front
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Back
+    i++;
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Back
+    i++;
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+        //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    
+    
+    return createMissionList(42,demo);
+
+//同上
+
+}
+
+//放置路径粗加工-半成品-抓取前一格子
+mission* dynamicPlan_321(){
+
+    mission demo[42];
+    int i = 0;
+    //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ-Put(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right-Mid-Line
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = true;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ-Put(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right-Line
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+    //Stp-REQ-Put(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+
+    //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ-Grab(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = false;
+    demo[i].M_2 = true;
+    demo[i].M_3 = true;
+    i++;
+
+    //Right-Mid-Line
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = true;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+    //Stp-REQ-Grab(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = false;
+    demo[i].M_2 = true;
+    demo[i].M_3 = true;
+    i++;
+    //Right-Line
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ-Grab(粗加工)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = false;
+    demo[i].M_2 = true;
+    demo[i].M_3 = true;
+    i++;
+
+    //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Left
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+ 
+    //Stp-REQ_Put(半成品)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = true;
+    i++;
+
+      //Front-Mid-Line
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = true;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+    //Stp-REQ_Put(半成品)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = true;
+    i++;
+
+    //Front-Line
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = true;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp-REQ_Put(半成品)
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = true;
+    demo[i].M_1 = true;
+    demo[i].M_2 = false;
+    demo[i].M_3 = true;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    i++;
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+
+    //Front
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Back
+    i++;
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+    //Back
+    i++;
+    demo[i].A = false;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+
+        //Left
+    i++;
+    demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+     return createMissionList(42,demo);
+
+//同上
+
+
+}
+
+
+//半成品区到原料区前一个格子(已在放置路径规划中调用)
+mission* commonPath(){
+    mission demo[7];
+    short i = 0;
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Right
+    demo[i].A = true;
+    demo[i].B = true;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+
+    //Front
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Stp
+    demo[i].A = false;
+    demo[i].B = false;
+    demo[i].C = true;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    return createMissionList(7,demo);
+
+}
+/*
+*动态放置规划
+*根据任务码来确认粗加工区半成品区放置顺序
+*参数:动态抓取规划的链表尾节点指针
+*/
+bool dynamicSurplus(mission* p){
+    //任务码123 132
+    if (UART_TARGET[0] == 1){
+        //123
+        if (UART_TARGET[1] == 2){
+            Serial.println("进入动态放置规划");
+            p->next = dynamicPlan_123();
+            return false;
+
+        }
+        //132
+        else{
+            p->next =dynamicPlan_132();
+            return false;
+
+        }
+ 
+
+    }
+    //213 231
+    if (UART_TARGET[0] == 2){
+        //213
+        if (UART_TARGET[1] == 1){
+            p->next = dynamicPlan_213();
+            return false;
+
+        }
+
+        //231
+        else{
+            p->next =dynamicPlan_231();
+            return false;
+        }
+    }
+
+    //312 321
+    if (UART_TARGET[0] == 3){
+        //312
+        if (UART_TARGET[1] == 1){
+            p->next = dynamicPlan_312();
+            return false;
+
+        }
+        //321
+        else{
+            p->next = dynamicPlan_321();
+            return false;
+        }
+    }
+
+
+}
+
 /*
 *抓取动态规划
+*由抓取顺序确定之后的路径
+*第二次到达物料区时更新规划
 *失败返回false
 */
 
@@ -3353,62 +6706,77 @@ bool dynamicGrabPlan(){
             if (UART_PLAN[1] == 2){
 
                 mp->next = (mission*)malloc(sizeof(mission));
-                //Front-mid-line
+                //Stp-REQ-Grab
                 mp->next->A = false;
                 mp->next->B = false;
-                mp->next->C = false;
+                mp->next->C = true;
                 mp->next->D = false;
-                mp->next->E = true;
-                mp->next->M = false;
+                mp->next->E = false;
+                mp->next->M = true;
                 mp->next->M_1 = false;
                 mp->next->M_2 = false;
-                mp->next->M_3 = false;
+                mp->next->M_3 = true;
                 mp->next->next = NULL;
 
 
                 mp->next->next = (mission*)malloc(sizeof(mission));
-                //Stp-REQ-grab
+                //Front-Mid-Line
                 mp->next->next->A = false;
                 mp->next->next->B = false;
-                mp->next->next->C = true;
+                mp->next->next->C = false;
                 mp->next->next->D = false;
-                mp->next->next->E = false;
-                mp->next->next->M = true;
+                mp->next->next->E = true;
+                mp->next->next->M = false;
                 mp->next->next->M_1 = false;
                 mp->next->next->M_2 = false;
-                mp->next->next->M_3 = true;
+                mp->next->next->M_3 = false;
                 mp->next->next->next = NULL;
 
 
 
                 mp->next->next->next = (mission*)malloc(sizeof(mission));
-                //Front
+                //Stp-REQ-Grab
                 mp->next->next->next->A = false;
                 mp->next->next->next->B = false;
-                mp->next->next->next->C = false;
+                mp->next->next->next->C = true;
                 mp->next->next->next->D = false;
                 mp->next->next->next->E = false;
-                mp->next->next->next->M = false;
+                mp->next->next->next->M = true;
                 mp->next->next->next->M_1 = false;
                 mp->next->next->next->M_2 = false;
-                mp->next->next->next->M_3 = false;
+                mp->next->next->next->M_3 = true;
                 mp->next->next->next->next = NULL;
 
 
 
                 mp->next->next->next->next = (mission*)malloc(sizeof(mission));
-                //Stp-REQ-grab
+                //Front-Line
                 mp->next->next->next->next->A = false;
                 mp->next->next->next->next->B = false;
-                mp->next->next->next->next->C = true;
-                mp->next->next->next->next->D = false;
+                mp->next->next->next->next->C = false;
+                mp->next->next->next->next->D = true;
                 mp->next->next->next->next->E = false;
-                mp->next->next->next->next->M = true;
+                mp->next->next->next->next->M = false;
                 mp->next->next->next->next->M_1 = false;
                 mp->next->next->next->next->M_2 = false;
-                mp->next->next->next->next->M_3 = true;
-                mp->next->next->next->next->next = NULL;  
+                mp->next->next->next->next->M_3 = false;
+                mp->next->next->next->next->next = NULL;
 
+                mission* p = mp->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Stp-REQ-Grab
+                mp->next->next->next->next->next->A = false;
+                mp->next->next->next->next->next->B = false;
+                mp->next->next->next->next->next->C = true;
+                mp->next->next->next->next->next->D = false;
+                mp->next->next->next->next->next->E = false;
+                mp->next->next->next->next->next->M = true;
+                mp->next->next->next->next->next->M_1 = false;
+                mp->next->next->next->next->next->M_2 = false;
+                mp->next->next->next->next->next->M_3 = true;
+                mp->next->next->next->next->next->next = NULL;
+
+                dynamicSurplus(p);
+               
                 return false;
 
 
@@ -3419,75 +6787,127 @@ bool dynamicGrabPlan(){
             else{
 
                 mp->next = (mission*)malloc(sizeof(mission));
-                //Front-mid-line
+                //Stp-REQ-Grab(上层)1
                 mp->next->A = false;
                 mp->next->B = false;
                 mp->next->C = false;
                 mp->next->D = false;
                 mp->next->E = false;
-                mp->next->M = false;
+                mp->next->M = true;
                 mp->next->M_1 = false;
                 mp->next->M_2 = false;
-                mp->next->M_3 = false;
+                mp->next->M_3 = true;
                 mp->next->next = NULL;
 
 
                 mp->next->next = (mission*)malloc(sizeof(mission));
-                //Stp-REQ-grab
+                //Front
                 mp->next->next->A = false;
                 mp->next->next->B = false;
-                mp->next->next->C = true;
+                mp->next->next->C = false;
                 mp->next->next->D = false;
                 mp->next->next->E = false;
-                mp->next->next->M = true;
+                mp->next->next->M = false;
                 mp->next->next->M_1 = false;
                 mp->next->next->M_2 = false;
-                mp->next->next->M_3 = true;
+                mp->next->next->M_3 = false;
                 mp->next->next->next = NULL;
 
 
 
                 mp->next->next->next = (mission*)malloc(sizeof(mission));
-                //Back-mid-line
+                //Stp-REQ-Grab(上层)3
                 mp->next->next->next->A = false;
-                mp->next->next->next->B = true;
-                mp->next->next->next->C = false;
+                mp->next->next->next->B = false;
+                mp->next->next->next->C = true;
                 mp->next->next->next->D = false;
                 mp->next->next->next->E = false;
-                mp->next->next->next->M = false;
+                mp->next->next->next->M = true;
                 mp->next->next->next->M_1 = false;
                 mp->next->next->next->M_2 = false;
-                mp->next->next->next->M_3 = false;
+                mp->next->next->next->M_3 = true;
                 mp->next->next->next->next = NULL;
 
 
 
                 mp->next->next->next->next = (mission*)malloc(sizeof(mission));
-                //Stp-REQ-grab
+                //Back-Mid-Line
                 mp->next->next->next->next->A = false;
-                mp->next->next->next->next->B = false;
-                mp->next->next->next->next->C = true;
+                mp->next->next->next->next->B = true;
+                mp->next->next->next->next->C = false;
                 mp->next->next->next->next->D = false;
-                mp->next->next->next->next->E = false;
-                mp->next->next->next->next->M = true;
+                mp->next->next->next->next->E = true;
+                mp->next->next->next->next->M = false;
                 mp->next->next->next->next->M_1 = false;
                 mp->next->next->next->next->M_2 = false;
-                mp->next->next->next->next->M_3 = true;
+                mp->next->next->next->next->M_3 = false;
                 mp->next->next->next->next->next = NULL;  
 
 
                 mp->next->next->next->next->next = (mission*)malloc(sizeof(mission));
-                //Front
+                //Stp-REQ-Grab(上层)2
                 mp->next->next->next->next->next->A = false;
                 mp->next->next->next->next->next->B = false;
-                mp->next->next->next->next->next->C = false;
+                mp->next->next->next->next->next->C = true;
                 mp->next->next->next->next->next->D = false;
                 mp->next->next->next->next->next->E = false;
-                mp->next->next->next->next->next->M = false;
+                mp->next->next->next->next->next->M = true;
                 mp->next->next->next->next->next->M_1 = false;
                 mp->next->next->next->next->next->M_2 = false;
-                mp->next->next->next->next->next->M_3 = false;
-                mp->next->next->next->next->next->next = NULL; 
+                mp->next->next->next->next->next->M_3 = true;
+                mp->next->next->next->next->next->next = NULL;
+
+                mission* p = mp->next->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Front-Line
+                mp->next->next->next->next->next->next->A = false;
+                mp->next->next->next->next->next->next->B = false;
+                mp->next->next->next->next->next->next->C = false;
+                mp->next->next->next->next->next->next->D = true;
+                mp->next->next->next->next->next->next->E = false;
+                mp->next->next->next->next->next->next->M = false;
+                mp->next->next->next->next->next->next->M_1 = false;
+                mp->next->next->next->next->next->next->M_2 = false;
+                mp->next->next->next->next->next->next->M_3 = false;
+                mp->next->next->next->next->next->next->next = NULL;  
+                dynamicSurplus(p);
+
+
+                //使用createMissionList函数
+
+            //王祯祥
+
+
+                //Left
+                //Left
+                //Stp-REQ-Put(粗加工区)1R
+                //Left
+                //Stp-REQ-Put(粗加工区)3B
+                //Right-Mid-Line
+                //Stp-REQ-Put(粗加工区)2G
+
+                //Right-Line
+                //Stp-REQ-Grab(粗加工区)1R
+                //Left
+                //Stp-REQ-Grab(粗加工区)3B
+                //Right-Mid-Line
+                //Stp-REQ-Grab(粗加工区)2G
+
+                //Left-Line
+                //Left
+                //Left
+                //Back
+                //Back
+                //Stp-REQ-Put(半成品区)1R
+                //Back
+                //Stp-REQ-Put(半成品区)3B
+                //Front-Mid-Line
+                //Stp-REQ-Put(半成品区)2G
+
+                //Front-Line
+                //Rightx5
+                //Front
+                //Stp-REQ-Scan-Plan(下层)
+
                 return false;
             }
 
@@ -3528,12 +6948,12 @@ bool dynamicGrabPlan(){
 
 
                 mp->next->next->next = (mission*)malloc(sizeof(mission));
-                //Back
+                //Back-Line
                 mp->next->next->next->A = false;
                 mp->next->next->next->B = true;
                 mp->next->next->next->C = false;
-                mp->next->next->next->D = false;
-                mp->next->next->next->E = true;
+                mp->next->next->next->D = true;
+                mp->next->next->next->E = false;
                 mp->next->next->next->M = false;
                 mp->next->next->next->M_1 = false;
                 mp->next->next->next->M_2 = false;
@@ -3571,24 +6991,55 @@ bool dynamicGrabPlan(){
 
 
 
-                mp->next->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+                mission* p = mp->next->next->next->next->next->next = (mission*)malloc(sizeof(mission));
                 //Stp-REQ-grab
                 mp->next->next->next->next->next->next->A = false;
                 mp->next->next->next->next->next->next->B = false;
-                mp->next->next->next->next->next->next->C = false;
+                mp->next->next->next->next->next->next->C = true;
                 mp->next->next->next->next->next->next->D = false;
                 mp->next->next->next->next->next->next->E = false;
-                mp->next->next->next->next->next->next->M = false;
+                mp->next->next->next->next->next->next->M = true;
                 mp->next->next->next->next->next->next->M_1 = false;
                 mp->next->next->next->next->next->next->M_2 = false;
-                mp->next->next->next->next->next->next->M_3 = false;
+                mp->next->next->next->next->next->next->M_3 = true;
                 mp->next->next->next->next->next->next->next = NULL;
+
+                dynamicSurplus(p);
+                
+                //刘永
+
+                //Left
+                //Left
+                //Left-Mid-Line
+                //Stp-REQ-Put(粗加工)2G
+                //Right-Line
+                //Stp-REQ-Put(粗加工)1R
+                //Left
+                //Stp-REQ-Put(粗加工)3B
+                //Right-Mid-Line
+                //Stp-REQ-Grab(粗加工)2G
+                //Right-Line
+                //Stp-REQ-Grab(粗加工)1R
+                //Left
+                //Stp-REQ-Grab(粗加工)3B
+                //LeftX2
+                //BackX2
+                //Back-Mid-Line
+                //Stp-REQ-Put(半成品)2G
+                //Front-Line
+                //Stp-REQ-Put(半成品)1R
+                //Back
+                //Stp-REQ-Put(半成品)3B
+                //RightX5
+                //FrontX2
+                //Stp-REQ-Scan-Plan
                 return false;
             }
 
 
             //231
             else{
+
 
                 mp->next = (mission*)malloc(sizeof(mission));
                 //Front-mid-line
@@ -3620,11 +7071,11 @@ bool dynamicGrabPlan(){
 
 
                 mp->next->next->next = (mission*)malloc(sizeof(mission));
-                //Front
+                //Front-Line
                 mp->next->next->next->A = false;
                 mp->next->next->next->B = false;
                 mp->next->next->next->C = false;
-                mp->next->next->next->D = false;
+                mp->next->next->next->D = true;
                 mp->next->next->next->E = false;
                 mp->next->next->next->M = false;
                 mp->next->next->next->M_1 = false;
@@ -3667,14 +7118,56 @@ bool dynamicGrabPlan(){
                 //Stp-REQ-grab
                 mp->next->next->next->next->next->next->A = false;
                 mp->next->next->next->next->next->next->B = false;
-                mp->next->next->next->next->next->next->C = false;
+                mp->next->next->next->next->next->next->C = true;
                 mp->next->next->next->next->next->next->D = false;
                 mp->next->next->next->next->next->next->E = false;
-                mp->next->next->next->next->next->next->M = false;
+                mp->next->next->next->next->next->next->M = true;
                 mp->next->next->next->next->next->next->M_1 = false;
                 mp->next->next->next->next->next->next->M_2 = false;
-                mp->next->next->next->next->next->next->M_3 = false;
+                mp->next->next->next->next->next->next->M_3 = true;
                 mp->next->next->next->next->next->next->next = NULL;
+
+                mission* p = mp->next->next->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Front
+                mp->next->next->next->next->next->next->next->A = false;
+                mp->next->next->next->next->next->next->next->B = false;
+                mp->next->next->next->next->next->next->next->C = false;
+                mp->next->next->next->next->next->next->next->D = false;
+                mp->next->next->next->next->next->next->next->E = false;
+                mp->next->next->next->next->next->next->next->M = false;
+                mp->next->next->next->next->next->next->next->M_1 = false;
+                mp->next->next->next->next->next->next->next->M_2 = false;
+                mp->next->next->next->next->next->next->next->M_3 = false;
+                mp->next->next->next->next->next->next->next->next = NULL;
+                dynamicSurplus(p);
+                //刘磊
+
+                //LeftX2
+                //Left-Mid-Line
+                //Stp-REQ-Put(粗加工)2G
+                //Left-Line
+                //Stp-REQ-Put(粗加工)3B
+                //Right
+                //Stp-REQ-Put(粗加工)1R
+                //Left-Mid-Line
+                //Stp-REQ-Grab(粗加工)2G
+                //Left-Line
+                //Stp-REQ-Grab(粗加工)3B
+                //Right
+                //Stp-REQ-Grab(粗加工)1R
+        
+                //LeftX3
+                //BackX2
+                //Back-Mid-Line
+                //Stp-REQ-Put(半成品)2G
+                //Bcak-Line
+                //Stp-REQ-Put(半成品)3B
+                //Front
+                //Stp-REQ-Put(半成品)1R
+                //RightX5
+                //Front
+                //Stp-REQ-Scan(下层)
+
                 return false;
 
             }
@@ -3689,6 +7182,7 @@ bool dynamicGrabPlan(){
 
         //312 321
         else{
+            //已测试
             //312
             if(UART_PLAN[1] == 1){
 
@@ -3771,28 +7265,56 @@ bool dynamicGrabPlan(){
                 //Stp-REQ-grab
                 mp->next->next->next->next->next->next->A = false;
                 mp->next->next->next->next->next->next->B = false;
-                mp->next->next->next->next->next->next->C = false;
+                mp->next->next->next->next->next->next->C = true;
                 mp->next->next->next->next->next->next->D = false;
                 mp->next->next->next->next->next->next->E = false;
-                mp->next->next->next->next->next->next->M = false;
+                mp->next->next->next->next->next->next->M = true;
                 mp->next->next->next->next->next->next->M_1 = false;
                 mp->next->next->next->next->next->next->M_2 = false;
-                mp->next->next->next->next->next->next->M_3 = false;
+                mp->next->next->next->next->next->next->M_3 = true;
                 mp->next->next->next->next->next->next->next = NULL;
 
 
-                mp->next->next->next->next->next->next->next = (mission*)malloc(sizeof(mission));
-                //Front
+                mission* p = mp->next->next->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+                //Front-line
                 mp->next->next->next->next->next->next->next->A = false;
                 mp->next->next->next->next->next->next->next->B = false;
                 mp->next->next->next->next->next->next->next->C = false;
-                mp->next->next->next->next->next->next->next->D = false;
+                mp->next->next->next->next->next->next->next->D = true;
                 mp->next->next->next->next->next->next->next->E = false;
                 mp->next->next->next->next->next->next->next->M = false;
                 mp->next->next->next->next->next->next->next->M_1 = false;
                 mp->next->next->next->next->next->next->next->M_2 = false;
                 mp->next->next->next->next->next->next->next->M_3 = false;
                 mp->next->next->next->next->next->next->next->next = NULL;
+
+                dynamicSurplus(p);
+
+                //LeftX3
+                //Stp-REQ-Put(粗加工)3B
+                //Right
+                //Stp-REQ-Put(粗加工)1R
+                //Left-Mid-Line
+                //Stp-REQ-Put(粗加工)2G
+                //Left-Line
+                //Stp-REQ-Grab(粗加工)3B
+                //Right
+                //Stp-REQ-Grab(粗加工)1R
+                //Left-Mid-Line
+                //Stp-REQ-Grab(粗加工)2G
+                //Left-Line
+
+                //LeftX2
+                //Back3
+                //Stp-REQ-Put(半成品)3B
+                //Front
+                //Stp-REQ-Put(半成品)1R
+                //Back-Mid-Line
+                //Stp-REQ-Put(半成品)2G
+                //Front-Line
+                //RightX5
+                //Front
+                //Stp-REQ-Scan(下层)
                 
                 return false;
             }
@@ -3859,12 +7381,12 @@ bool dynamicGrabPlan(){
 
 
                 mp->next->next->next->next->next = (mission*)malloc(sizeof(mission));
-                //Back
+                //Back-Line
                 mp->next->next->next->next->next->A = false;
                 mp->next->next->next->next->next->B = true;
                 mp->next->next->next->next->next->C = false;
                 mp->next->next->next->next->next->D = false;
-                mp->next->next->next->next->next->E = false;
+                mp->next->next->next->next->next->E = true;
                 mp->next->next->next->next->next->M = false;
                 mp->next->next->next->next->next->M_1 = false;
                 mp->next->next->next->next->next->M_2 = false;
@@ -3877,17 +7399,17 @@ bool dynamicGrabPlan(){
                 //Stp-REQ-grab
                 mp->next->next->next->next->next->next->A = false;
                 mp->next->next->next->next->next->next->B = false;
-                mp->next->next->next->next->next->next->C = false;
+                mp->next->next->next->next->next->next->C = true;
                 mp->next->next->next->next->next->next->D = false;
                 mp->next->next->next->next->next->next->E = false;
-                mp->next->next->next->next->next->next->M = false;
+                mp->next->next->next->next->next->next->M = true;
                 mp->next->next->next->next->next->next->M_1 = false;
                 mp->next->next->next->next->next->next->M_2 = false;
-                mp->next->next->next->next->next->next->M_3 = false;
+                mp->next->next->next->next->next->next->M_3 = true;
                 mp->next->next->next->next->next->next->next = NULL;
 
 
-                mp->next->next->next->next->next->next->next = (mission*)malloc(sizeof(mission));
+                mission* p = mp->next->next->next->next->next->next->next = (mission*)malloc(sizeof(mission));
                 //Front
                 mp->next->next->next->next->next->next->next->A = false;
                 mp->next->next->next->next->next->next->next->B = false;
@@ -3899,6 +7421,37 @@ bool dynamicGrabPlan(){
                 mp->next->next->next->next->next->next->next->M_2 = false;
                 mp->next->next->next->next->next->next->next->M_3 = false;
                 mp->next->next->next->next->next->next->next->next = NULL;
+                dynamicSurplus(p);
+                
+                
+                // short pathArr[32] = {11,11,11,1,16,1,15,1,11,3,16,3,15,3,11,11,11,8,8,8,4,7,4,6,4,14,14,14,14,14,5,17}
+                // mp->next->next->next->next->next->next->next->next = pathGenerate(pathArr,32);
+
+                
+                
+                //LeftX3 11
+                //Stp-REQ-Put(粗加工)3B 1
+                //Right-Mid-Line 16
+                //Stp-REQ-Put(粗加工)2G 1
+                //Right-Line 15
+                //Stp-REQ-Put(粗加工)1R 1
+                //Left 11
+                //Stp-REQ-Grab(粗加工)3B 3
+                //Right-Mid-Line 16
+                //Stp-REQ-Grab(粗加工)2G 3
+                //Right-Line 15
+                //Stp-REQ-Grab(粗加工)1R 3
+                //LeftX3 11
+                //BackX3 8
+                //Stp-REQ-Put(半成品)3B 4
+                //Front-Mid-Line 7
+                //Stp-REQ-Put(半成品)2G 4
+                //Front-Line 6
+                //Stp-REQ-Put(半成品)1R 4
+                //RightX5 14
+                //Front 5
+                //Stp-REQ-Scan(下层) 
+
                 return false;
             
             }
@@ -3915,6 +7468,260 @@ bool dynamicGrabPlan(){
 
 
 
+/*
+*已搁置
+*原因:内存溢出
+*录入数字
+*返回路径链表
+*参数:数组名字,数组数量
+*/
+mission* pathGenerate(short* pathArr,short Num){
+    bool A;
+    bool B;
+    bool C;
+    bool D;
+    bool E;
+    bool M;
+    bool M_1;
+    bool M_2;
+    bool M_3;
+    short count = 0;
+
+    mission demo[Num];
+
+    
+
+    while (true){
+
+        switch (*pathArr)
+        {
+            //Stp-REQ-Put(粗加工)
+            case 1:
+                A = false;
+                B = false;
+                C = true;
+                D = false;
+                E = false;
+                M = true;
+                M_1 = true;
+                M_2 = false;
+                M_3 = false;
+                break;
+            //Stp-REQ-Grab(物料区)
+            case 2:
+                A = false;
+                B = false;
+                C = true;
+                D = false;
+                E = false;
+                M = true;
+                M_1 = false;
+                M_2 = false;
+                M_3 = true;
+                break;
+            //Stp-REQ-Grab(粗加工)
+            case 3:
+                A = false;
+                B = false;
+                C = true;
+                D = false;
+                E = false;
+                M = true;
+                M_1 = false;
+                M_2 = true;
+                M_3 = true;
+                break;
+            //Stp-REQ-Put(半成品)
+            case 4:
+                A = false;
+                B = false;
+                C = true;
+                D = false;
+                E = false;
+                M = true;
+                M_1 = true;
+                M_2 = false;
+                M_3 = true;
+                break;
+            //Front
+            case 5:
+                A = false;
+                B = false;
+                C = false;
+                D = false;
+                E = false;
+                M = false;
+                M_1 = false;
+                M_2 = false;
+                M_3 = false;
+                break;
+            //Front-Line
+            case 6:
+                A = false;
+                B = false;
+                C = false;
+                D = true;
+                E = false;
+                M = false;
+                M_1 = false;
+                M_2 = false;
+                M_3 = false;
+                break;
+            //Front-Mid-Line
+            case 7:
+                A = false;
+                B = false;
+                C = false;
+                D = false;
+                E = true;
+                M = false;
+                M_1 = false;
+                M_2 = false;
+                M_3 = false;
+                break;
+            //Back
+            case 8:
+                A = false;
+                B = true;
+                C = false;
+                D = false;
+                E = false;
+                M = false;
+                M_1 = false;
+                M_2 = false;
+                M_3 = false;
+                break;
+            //Back-Line
+            case 9:
+                A = false;
+                B = true;
+                C = false;
+                D = true;
+                E = false;
+                M = false;
+                M_1 = false;
+                M_2 = false;
+                M_3 = false;
+                break;
+            //Back-Mid-Line
+            case 10:
+                A = false;
+                B = true;
+                C = false;
+                D = false;
+                E = true;
+                M = false;
+                M_1 = false;
+                M_2 = false;
+                M_3 = false;
+                break;
+            //Left
+            case 11:
+                A = true;
+                B = false;
+                C = false;
+                D = false;
+                E = false;
+                M = false;
+                M_1 = false;
+                M_2 = false;
+                M_3 = false;
+                break;
+            //Left-Line
+            case 12:
+                A = true;
+                B = false;
+                C = false;
+                D = true;
+                E = false;
+                M = false;
+                M_1 = false;
+                M_2 = false;
+                M_3 = false;
+                break;
+            //Left-Mid-Line
+            case 13:
+                A = true;
+                B = false;
+                C = false;
+                D = false;
+                E = true;
+                M = false;
+                M_1 = false;
+                M_2 = false;
+                M_3 = false;
+                break;
+            //Right
+            case 14:
+                A = true;
+                B = true;
+                C = false;
+                D = false;
+                E = false;
+                M = false;
+                M_1 = false;
+                M_2 = false;
+                M_3 = false;
+                break;
+            //Right-Line
+            case 15:
+                A = true;
+                B = true;
+                C = false;
+                D = true;
+                E = false;
+                M = false;
+                M_1 = false;
+                M_2 = false;
+                M_3 = false;
+                break;
+            //Right-Mid-Line
+            case 16:
+                A = true;
+                B = true;
+                C = false;
+                D = false;
+                E = true;
+                M = false;
+                M_1 = false;
+                M_2 = false;
+                M_3 = false;
+                break;
+
+            //Stp
+            case 17:
+                A = false;
+                B = false;
+                C = true;
+                D = false;
+                E = false;
+                M = false;
+                M_1 = false;
+                M_2 = false;
+                M_3 = false;
+                break;
+        }
+        
+        demo[count].A = A;
+        demo[count].B = B;
+        demo[count].C = C;
+        demo[count].D = D;
+        demo[count].E = E;
+        demo[count].M = M;
+        demo[count].M_1 = M_1;
+        demo[count].M_2 = M_2;
+        demo[count].M_3 = M_3;
+        count++;
+        pathArr++;
+        if (count > Num){
+            break;
+        }
+
+    }
+
+    return createMissionList(Num,demo);
+
+}
 
 
 /*
@@ -3935,22 +7742,22 @@ void stateFix()
 //  MsTimer2::stop();
 
     
-    Sensor_F_L = digitalRead(SensorPinF_1);
-    Sensor_F_R = digitalRead(SensorPinF_3);
+    // Sensor_F_L = digitalRead(SensorPinF_1);
+    // Sensor_F_R = digitalRead(SensorPinF_3);
 
-    Sensor_B_L = digitalRead(SensorPinB_1);
-    Sensor_B_R = digitalRead(SensorPinB_3);
+    // Sensor_B_L = digitalRead(SensorPinB_1);
+    // Sensor_B_R = digitalRead(SensorPinB_3);
 
-    Sensor_L_L = digitalRead(SensorPinL_1);
-    Sensor_L_R = digitalRead(SensorPinL_3);
+    // Sensor_L_L = digitalRead(SensorPinL_1);
+    // Sensor_L_R = digitalRead(SensorPinL_3);
 
-    Sensor_R_L = digitalRead(SensorPinR_1);
-    Sensor_R_R = digitalRead(SensorPinR_3);
+    // Sensor_R_L = digitalRead(SensorPinR_1);
+    // Sensor_R_R = digitalRead(SensorPinR_3);
 
-    Sensor_F_M = digitalRead(SensorPinF_2);
-    Sensor_B_M = digitalRead(SensorPinB_2);
-    Sensor_L_M = digitalRead(SensorPinL_2);
-    Sensor_R_M = digitalRead(SensorPinR_2);
+    // Sensor_F_M = digitalRead(SensorPinF_2);
+    // Sensor_B_M = digitalRead(SensorPinB_2);
+    // Sensor_L_M = digitalRead(SensorPinL_2);
+    // Sensor_R_M = digitalRead(SensorPinR_2);
     
 
 
@@ -4000,9 +7807,9 @@ void stateFix()
 
                 while (true)
                 {
-                    Sensor_L_R = digitalRead(SensorPinL_3);
-                    Sensor_L_L = digitalRead(SensorPinL_1);
-                    Sensor_L_M = digitalRead(SensorPinL_2);
+                    // Sensor_L_R = digitalRead(SensorPinL_3);
+                    // Sensor_L_L = digitalRead(SensorPinL_1);
+                    // Sensor_L_M = digitalRead(SensorPinL_2);
 
 
                     motorA1PNS(P);
@@ -4033,6 +7840,11 @@ void stateFix()
                         setSpdA2(targetSpd);
                         setSpdB1(targetSpd);
                         setSpdB2(targetSpd);
+
+                        motorA1PNS(P);
+                        motorA2PNS(P);
+                        motorB1PNS(P);
+                        motorB2PNS(P);
                         // Serial.println("左偏跳出");
                         break;
 
@@ -4057,9 +7869,9 @@ void stateFix()
 
                 while (true)
                 {
-                    Sensor_R_L = digitalRead(SensorPinR_1);
-                    Sensor_R_R = digitalRead(SensorPinR_3);
-                    Sensor_R_M = digitalRead(SensorPinR_2);
+                    // Sensor_R_L = digitalRead(SensorPinR_1);
+                    // Sensor_R_R = digitalRead(SensorPinR_3);
+                    // Sensor_R_M = digitalRead(SensorPinR_2);
 
                     motorA1PNS(N);
                     motorA2PNS(P);
@@ -4091,6 +7903,13 @@ void stateFix()
                         setSpdA2(targetSpd);
                         setSpdB1(targetSpd);
                         setSpdB2(targetSpd);
+
+                        motorA1PNS(P);
+                        motorA2PNS(P);
+                        motorB1PNS(P);
+                        motorB2PNS(P);
+
+
                         break;
 
 
@@ -4222,9 +8041,9 @@ void stateFix()
 
                 while (true)
                 {
-                    Sensor_L_R = digitalRead(SensorPinL_3);
-                    Sensor_L_L = digitalRead(SensorPinL_1);
-                    Sensor_L_M = digitalRead(SensorPinL_2);
+                    // Sensor_L_R = digitalRead(SensorPinL_3);
+                    // Sensor_L_L = digitalRead(SensorPinL_1);
+                    // Sensor_L_M = digitalRead(SensorPinL_2);
 
 
                     motorA1PNS(P);
@@ -4255,6 +8074,11 @@ void stateFix()
                         setSpdA2(targetSpd);
                         setSpdB1(targetSpd);
                         setSpdB2(targetSpd);
+
+                        motorA1PNS(N);
+                        motorA2PNS(N);
+                        motorB1PNS(N);
+                        motorB2PNS(N);
                         // Serial.println("左偏跳出");
                         break;
 
@@ -4279,9 +8103,9 @@ void stateFix()
 
                 while (true)
                 {
-                    Sensor_R_L = digitalRead(SensorPinR_1);
-                    Sensor_R_R = digitalRead(SensorPinR_3);
-                    Sensor_R_M = digitalRead(SensorPinR_2);
+                    // Sensor_R_L = digitalRead(SensorPinR_1);
+                    // Sensor_R_R = digitalRead(SensorPinR_3);
+                    // Sensor_R_M = digitalRead(SensorPinR_2);
 
                     motorA1PNS(N);
                     motorA2PNS(P);
@@ -4313,6 +8137,12 @@ void stateFix()
                         setSpdA2(targetSpd);
                         setSpdB1(targetSpd);
                         setSpdB2(targetSpd);
+
+                        motorA1PNS(N);
+                        motorA2PNS(N);
+                        motorB1PNS(N);
+                        motorB2PNS(N);
+
                         break;
 
 
@@ -4428,27 +8258,27 @@ void stateFix()
             //左侧碰线(当前朝向)
             if ( (!Sensor_B_M && !Sensor_B_R) || (!Sensor_B_M && !Sensor_B_L) || (!Sensor_B_M && !Sensor_B_R && !Sensor_B_L)){
                 
-                // setSpdA1(0);
-                // setSpdA2(0);
-                // setSpdB1(0);
-                // setSpdB2(0);
+                setSpdA1(0);
+                setSpdA2(0);
+                setSpdB1(0);
+                setSpdB2(0);
 
                 while (true)
                 {
-                    Sensor_B_L = digitalRead(SensorPinB_1);
-                    Sensor_B_R = digitalRead(SensorPinB_3);
-                    Sensor_B_M = digitalRead(SensorPinB_2);
+                    // Sensor_B_L = digitalRead(SensorPinB_1);
+                    // Sensor_B_R = digitalRead(SensorPinB_3);
+                    // Sensor_B_M = digitalRead(SensorPinB_2);
 
+                //检查出格检测方向
+                    motorA1PNS(P);
+                    motorA2PNS(P);
+                    motorB1PNS(P);
+                    motorB2PNS(P);
 
-                    // motorA1PNS(N);
-                    // motorA2PNS(P);
-                    // motorB1PNS(P);
-                    // motorB2PNS(N);
-
-                    setSpdA1(spdA1 - 0.4);
-                    setSpdA2(spdA2);
-                    setSpdB1(spdB1);
-                    setSpdB2(spdB2  -0.4);
+                    setSpdA1(60);
+                    setSpdA2(60);
+                    setSpdB1(60);
+                    setSpdB2(60);
 
                     motorA1();
                     motorA2();
@@ -4468,6 +8298,11 @@ void stateFix()
                         setSpdA2(targetSpd);
                         setSpdB1(targetSpd);
                         setSpdB2(targetSpd);
+
+                        motorA1PNS(P);
+                        motorA2PNS(P);
+                        motorB1PNS(P);
+                        motorB2PNS(P);
                         // Serial.println("左偏跳出");
                         break;
 
@@ -4485,28 +8320,28 @@ void stateFix()
             //右侧碰线(当前朝向)
 
             if ( (!Sensor_F_M && !Sensor_F_R) || (!Sensor_F_M && !Sensor_F_L) || (!Sensor_F_M && !Sensor_F_L && !Sensor_F_R) ){
-                // setSpdA1(0);
-                // setSpdA2(0);
-                // setSpdB1(0);
-                // setSpdB2(0);
+                setSpdA1(0);
+                setSpdA2(0);
+                setSpdB1(0);
+                setSpdB2(0);
 
                 while (true)
                 {
-                    Sensor_F_L = digitalRead(SensorPinF_1);
-                    Sensor_F_R = digitalRead(SensorPinF_3);
-                    Sensor_F_M = digitalRead(SensorPinF_2);
+                    // Sensor_F_L = digitalRead(SensorPinF_1);
+                    // Sensor_F_R = digitalRead(SensorPinF_3);
+                    // Sensor_F_M = digitalRead(SensorPinF_2);
 
 
-                    // motorA1PNS(N);
-                    // motorA2PNS(P);
-                    // motorB1PNS(P);
-                    // motorB2PNS(N);
+                    motorA1PNS(N);
+                    motorA2PNS(N);
+                    motorB1PNS(N);
+                    motorB2PNS(N);
 
 
-                    setSpdA1(spdA1);
-                    setSpdA2(spdA2 - 0.4);
-                    setSpdB1(spdB1 - 0.4);
-                    setSpdB2(spdB2);
+                    setSpdA1(60);
+                    setSpdA2(60);
+                    setSpdB1(60);
+                    setSpdB2(60);
 
                     motorA1();
                     motorA2();
@@ -4527,6 +8362,11 @@ void stateFix()
                         setSpdA2(targetSpd);
                         setSpdB1(targetSpd);
                         setSpdB2(targetSpd);
+
+                        motorA1PNS(N);
+                        motorA2PNS(N);
+                        motorB1PNS(N);
+                        motorB2PNS(N);
                         break;
 
 
@@ -4640,31 +8480,31 @@ void stateFix()
             //以两个传感器碰线为依据
 
 
-            //左侧碰线(当前朝向)
+            //右侧碰线(当前朝向)
             if ((!Sensor_B_M && !Sensor_B_R) || (!Sensor_B_M && !Sensor_B_L) || (!Sensor_B_R && !Sensor_B_L) || (!Sensor_B_M && !Sensor_B_R && !Sensor_B_L)){
                 
-                // setSpdA1(0);
-                // setSpdA2(0);
-                // setSpdB1(0);
-                // setSpdB2(0);
+                setSpdA1(0);
+                setSpdA2(0);
+                setSpdB1(0);
+                setSpdB2(0);
 
                 while (true)
                 {
                     // Serial.println("================================================方格前侧碰线修正中===");
-                    Sensor_B_L = digitalRead(SensorPinB_1);
-                    Sensor_B_R = digitalRead(SensorPinB_3);
-                    Sensor_B_M = digitalRead(SensorPinB_2);
+                    // Sensor_B_L = digitalRead(SensorPinB_1);
+                    // Sensor_B_R = digitalRead(SensorPinB_3);
+                    // Sensor_B_M = digitalRead(SensorPinB_2);
 
 
-                    // motorA1PNS(P);
-                    // motorA2PNS(P);
-                    // motorB1PNS(P);
-                    // motorB2PNS(P);
+                    motorA1PNS(P);
+                    motorA2PNS(P);
+                    motorB1PNS(P);
+                    motorB2PNS(P);
 
-                    setSpdA1(spdA1);
-                    setSpdA2(spdA2 - 0.4);
-                    setSpdB1(spdB1 - 0.4);
-                    setSpdB2(spdB2);
+                    setSpdA1(60);
+                    setSpdA2(60);
+                    setSpdB1(60);
+                    setSpdB2(60);
 
                     motorA1();
                     motorA2();
@@ -4684,6 +8524,11 @@ void stateFix()
                         setSpdA2(targetSpd);
                         setSpdB1(targetSpd);
                         setSpdB2(targetSpd);
+
+                        motorA1PNS(P);
+                        motorB1PNS(P);
+                        motorA2PNS(P);
+                        motorB2PNS(P);
                         // Serial.println("=============================================方格前侧跳出");
                         break;
 
@@ -4698,32 +8543,32 @@ void stateFix()
             }
 
 
-            //右侧碰线(当前朝向)
+            //左侧碰线(当前朝向)
 
             if ( (!Sensor_F_M && !Sensor_F_R) || (!Sensor_F_M && !Sensor_F_L) || (!Sensor_F_R && !Sensor_F_L) || (!Sensor_F_M && !Sensor_F_L && !Sensor_F_R) ){
-                // setSpdA1(0);
-                // setSpdA2(0);
-                // setSpdB1(0);
-                // setSpdB2(0);
+                setSpdA1(0);
+                setSpdA2(0);
+                setSpdB1(0);
+                setSpdB2(0);
 
                 while (true)
                 {
                     // Serial.println("================================================方格后侧碰线修正中===");
-                    Sensor_F_L = digitalRead(SensorPinF_1);
-                    Sensor_F_R = digitalRead(SensorPinF_3);
-                    Sensor_F_M = digitalRead(SensorPinF_2);
+                    // Sensor_F_L = digitalRead(SensorPinF_1);
+                    // Sensor_F_R = digitalRead(SensorPinF_3);
+                    // Sensor_F_M = digitalRead(SensorPinF_2);
 
 
-                    // motorA1PNS(N);
-                    // motorA2PNS(N);
-                    // motorB1PNS(N);
-                    // motorB2PNS(N);
+                    motorA1PNS(N);
+                    motorA2PNS(N);
+                    motorB1PNS(N);
+                    motorB2PNS(N);
 
 
-                    setSpdA1(spdA1 - 0.4);
-                    setSpdA2(spdA2);
-                    setSpdB1(spdB1);
-                    setSpdB2(spdB2 - 0.4);
+                    setSpdA1(60);
+                    setSpdA2(60);
+                    setSpdB1(60);
+                    setSpdB2(60);
 
                     motorA1();
                     motorA2();
@@ -4745,6 +8590,11 @@ void stateFix()
                         setSpdA2(targetSpd);
                         setSpdB1(targetSpd);
                         setSpdB2(targetSpd);
+
+                        motorA1PNS(N);
+                        motorB1PNS(N);
+                        motorA2PNS(N);
+                        motorB2PNS(N);
                         // Serial.println("================================================方格后侧碰线跳出===");
                         break;
 
@@ -4870,7 +8720,7 @@ void UART_DATA_FLUSH(){
     
     int j = 50;
     while(j--){
-        UART_DATABUF[j] = 0x00;
+        UART_DATABUF[j] =0;
     }
 }
 
@@ -4908,25 +8758,36 @@ bool get_data(){
 */
 bool get_data_1(unsigned long startTime){
     int i = 0;
+    Serial2.flush();
     while(true){
         
         //如果缓冲区有数据
         if (Serial2.available() > 0){
-
+            // Serial.println("UARTREAD");
             //读取数据直到读完
-            while(Serial2.available() > 0){
+            //加入延时等待数据传输完毕
+            
+            delay(5);
+            while(Serial2.available() > 0 && i < 50){
+
                 UART_DATABUF[i] = Serial2.read();
+                // Serial.println(UART_DATABUF[i]);
                 i++;
             }
             //清空缓冲区
             Serial2.flush();
-
+            // decodes_1();
+            // Serial.println("UARTREAD");
             return false;
         }
-        if (millis() - startTime > 10000){
+        // return true;
+
+        //长时间没有收到
+        if (millis() - startTime > 1000){
+            Serial2.flush();
+            Serial.println("overTime!");
             return true;
         }
-
     }
 
 }
@@ -5028,17 +8889,101 @@ bool decodes(){
 *数据解码
 *openmv控制机械臂抓取(通信协议2)
 */
-bool decodes(){
+// bool decodes(){
+//     int i = 0;
+    
+
+//      Serial.println("enter decode");
+//     while (UART_DATABUF[i] != 36 && i < 51){
+        
+        
+        
+//         //解码# a123321 $
+//         if (UART_DATABUF[i] == 35 && UART_DATABUF[i+1] == 97 &&  UART_DATABUF[i+8] == 36 && UART_SERVICE_A_FLAG){
+//             //confmCode:a
+
+//             decode_a(i);//数据解码存储
+            
+
+//             // Serial.println("!!!!!!!!!!!!!!!!!!!");
+//             // Serial.println(UART_DATABUF[i]);
+//             // Serial.println(UART_DATABUF[i+1]);
+//             // Serial.println(UART_DATABUF[i+2]);
+//             // Serial.println(UART_DATABUF[i+3]);
+//             // Serial.println(UART_DATABUF[i+4]);
+//             // Serial.println(UART_DATABUF[i+5]);
+//             // Serial.println(UART_DATABUF[i+6]);
+//             // Serial.println(UART_DATABUF[i+7]);
+//             // Serial.println("EEEEEEEEEEEEEEEEEEE");
+//             //缓冲区重置
+//             UART_DATA_FLUSH();
+//             Serial2.flush();
+//             UART_SERVICE_A_FLAG = false;
+//             return false;
+
+//         }
+//         //          #b$(扫描下一个)           #bxxx$(规划)
+        
+//         //#b.................
+//         if (UART_DATABUF[i] == 35 && UART_DATABUF[i+1] == 98 && (UART_DATABUF[i+2] == 36 || UART_DATABUF[i+5] == 36)){
+            
+//             //扫描下一个 36 '$'
+//             if (UART_DATABUF[i+2] == 36){
+
+//                 //缓存清空
+//                 UART_DATA_FLUSH();
+//                 Serial2.flush();
+//                 return false;
+//             }
+
+
+//             //存放路径规划
+//             if (UART_DATABUF[i+1] == 98 && UART_DATABUF[i+5] == 36){
+//                 //解码存放
+//                 decode_b(i);
+
+//                 //更新路径
+//                 // dynamicGrabPlan();
+
+//                 //缓冲区清空
+//                 UART_DATA_FLUSH();
+//                 Serial2.flush();
+//                 //有规划返回false，开始下一个，反之继续等待
+//                 return dynamicGrabPlan();
+//             }
+
+//             //confmCode:b
+
+//         }
+
+//         i++;
+
+        
+//     }
+//     Serial.println("decoding error");
+//     UART_DATA_FLUSH();
+//     Serial2.flush();
+    
+//     return true;
+// }
+
+
+/*
+*数据解码
+*openmv控制机械臂抓取(通信协议2)
+*解码失败返回true
+*/
+bool decodes_1(){
     int i = 0;
     
 
      Serial.println("enter decode");
-    while (UART_DATABUF[i] != 36 && i < 51){
+    while (i < 50){
         
         
         
-        //解码# a123321 $
-        if (UART_DATABUF[i] == 35 && UART_DATABUF[i+1] == 97 &&  UART_DATABUF[i+8] == 36 && UART_SERVICE_A_FLAG){
+        //解码#a123321$
+        if (UART_DATABUF[i] == 35 && UART_DATABUF[i+1] == 97 &&  UART_DATABUF[i+8] == 36){
             //confmCode:a
 
             decode_a(i);//数据解码存储
@@ -5055,106 +9000,36 @@ bool decodes(){
             // Serial.println(UART_DATABUF[i+7]);
             // Serial.println("EEEEEEEEEEEEEEEEEEE");
             //缓冲区重置
-            UART_DATA_FLUSH();
-            Serial2.flush();
-            UART_SERVICE_A_FLAG = false;
-            return false;
-
-        }
-        //          #b$(扫描下一个)           #bxxx$(规划)
-        
-        //#b.................
-        if (UART_DATABUF[i] == 35 && UART_DATABUF[i+1] == 98 && (UART_DATABUF[i+2] == 36 || UART_DATABUF[i+5] == 36)){
-            
-            //扫描下一个 36 '$'
-            if (UART_DATABUF[i+2] == 36){
-
-                //缓存清空
-                UART_DATA_FLUSH();
-                Serial2.flush();
-                return false;
-            }
-
-
-            //存放路径规划
-            if (UART_DATABUF[i+1] == 98 && UART_DATABUF[i+5] == 36){
-                //解码存放
-                decode_b(i);
-
-                //更新路径
-                // dynamicGrabPlan();
-
-                //缓冲区清空
-                UART_DATA_FLUSH();
-                Serial2.flush();
-                //有规划返回false，开始下一个，反之继续等待
-                return dynamicGrabPlan();
-            }
-
-            //confmCode:b
-
-        }
-
-        i++;
-
-        
-    }
-    Serial.println("decoding error");
-    UART_DATA_FLUSH();
-    Serial2.flush();
-    
-    return true;
-}
-
-
-/*
-*数据解码
-*openmv控制机械臂抓取(通信协议2)
-*解码失败返回true
-*/
-bool decodes_1(){
-    int i = 0;
-    
-
-     Serial.println("enter decode");
-    while (UART_DATABUF[i] != 36 && i < 51){
-        
-        
-        
-        //解码# a123321 $
-        if (UART_DATABUF[i] == 35 && UART_DATABUF[i+1] == 97 &&  UART_DATABUF[i+8] == 36){
-            //confmCode:a
-
-            decode_a(i);//数据解码存储
-            
-
-            Serial.println("!!!!!!!!!!!!!!!!!!!");
-            Serial.println(UART_DATABUF[i]);
-            Serial.println(UART_DATABUF[i+1]);
-            Serial.println(UART_DATABUF[i+2]);
-            Serial.println(UART_DATABUF[i+3]);
-            Serial.println(UART_DATABUF[i+4]);
-            Serial.println(UART_DATABUF[i+5]);
-            Serial.println(UART_DATABUF[i+6]);
-            Serial.println(UART_DATABUF[i+7]);
-            Serial.println("EEEEEEEEEEEEEEEEEEE");
-            //缓冲区重置
 
             UART_DATA_FLUSH();
+
             //路径切换
-            // mps = mps -> next;
-            // mp = mps->head;
-            flagA = flagD = true;
+            mps = mps->next;
+            mp = mps->head;
+            Serial.println("pathChanged!");
+
+            // flagA = flagD = true;
             return false;
 
         }
-        //          #b$(扫描下一个)           #bxxx$(规划)
+        //          #b$(扫描下一个)           #bxxx$(规划)        #bb$(放置区结束)
         
         //#b.................
-        if (UART_DATABUF[i] == 35 && UART_DATABUF[i+1] == 98 && (UART_DATABUF[i+2] == 36 || UART_DATABUF[i+5] == 36)){
+        if (UART_DATABUF[i] == 35 && UART_DATABUF[i+1] == 98 && (UART_DATABUF[i+2] == 36 || UART_DATABUF[i+3] == 36 || UART_DATABUF[i+5] == 36)){
+            
+            
+            //物料区抓取结束,切换路径
+            if (UART_DATABUF[i+1] == 98 && UART_DATABUF[i+2] == 98){
+                // mps = mps->next;
+                mp = mp->next;
+                Serial.println("change to put");
+                return false;
+
+            }
             
             //扫描下一个 36 '$'
             if (UART_DATABUF[i+2] == 36){
+                Serial.println("#b$");
 
                 //缓存清空
                 UART_DATA_FLUSH();
@@ -5166,9 +9041,11 @@ bool decodes_1(){
 
             //存放路径规划
             if (UART_DATABUF[i+1] == 98 && UART_DATABUF[i+5] == 36){
+                Serial.println("$b222$");
                 //解码存放
                 decode_b(i);
                 dynamicGrabPlan();
+                
 
                 //缓冲区清空
                 UART_DATA_FLUSH();
@@ -5180,58 +9057,106 @@ bool decodes_1(){
 
         }
 
+        //粗加工区放置完毕  #c$
+
+        if (UART_DATABUF[i] == 35 && UART_DATABUF[i+1] == 99 && UART_DATABUF[i+2] == 36){
+            //移动至下一个位置
+            Serial.println("粗加工区放置完毕");
+            //缓冲区清空
+            UART_DATA_FLUSH();
+            flagA = flagD = true;
+            return false;
+
+        }
+
+        //粗加工区最后一个抓取完毕  #ff$
+        // if (UART_DATABUF[i] == 35 && UART_DATABUF[i+1] == 102 && UART_DATABUF[i+2] == 102 && UART_DATABUF[i+3] == 36){
+        //     //移动至下一个位置
+        //     UART_DATA_FLUSH();
+        //     flagA = flagD = true;
+        //     return false;
+        // }
+
+        
+        //粗加工区抓取完毕 #f$
+        if (UART_DATABUF[i] == 35 && UART_DATABUF[i+1] == 102 && UART_DATABUF[i+2] == 36){
+            //移动至下一个位置
+            UART_DATA_FLUSH();
+            Serial.println("粗加工区抓取完毕");
+            flagA = flagD = true;
+            return false;
+        }
+
+        //半成品区放置完毕 #d$
+        if (UART_DATABUF[i] == 35 && UART_DATABUF[i+1] == 100 && UART_DATABUF[i+2] == 36){
+            //移动至下一个位置
+            UART_DATA_FLUSH();
+            flagA =flagD = true;
+            Serial.println("半成品区放置完毕");
+            return false;
+        }
+
+
+
         i++;
 
         
     }
     Serial.println("decoding error");
+    UART_DATA_FLUSH();
+    Serial2.flush();
     return true;
 }
 
 
 
 //请求服务,参数为请求码,反馈码
-void reqs(char* req_code,char* resp_code){
-    int i = 0;
-    bool uart_flag = true;
+// void reqs(char* req_code,char* resp_code){
+//     int i = 0;
+//     bool uart_flag = true;
 
-    while (uart_flag)
-    {
-        // Serial2.flush();
+//     while (uart_flag)
+//     {
+//         // Serial2.flush();
 
-        Serial2.write(req_code,3);
-        Serial.println("REQ_SCAN");
+//         Serial2.write(req_code,3);
+//         Serial.println("REQ_SCAN");
 
 
         
-        //没有收到数据进行下一次循环
-        if (!get_data()){
-            blbl(5);
-            continue;
-        }
-        //blbl(100);
-        //请求成功,跳出循环
-        bool tempFlag = decodes();
-        uart_flag = respServices(tempFlag,resp_code);
+//         //没有收到数据进行下一次循环
+//         if (!get_data()){
+//             blbl(5);
+//             continue;
+//         }
+//         //blbl(100);
+//         //请求成功,跳出循环
+//         bool tempFlag = decodes();
+//         uart_flag = respServices(tempFlag,resp_code);
         
-    }
-    Serial.println("REQ_SACN_DONE");
+//     }
+//     Serial.println("REQ_SACN_DONE");
 
-}
+// }
 
 
 //请求服务1,参数为请求码
 void reqs_1(char* req_code){ 
     //循环标记位
-    bool flag = true;
+    bool req_flag = true;
     unsigned long startTime = 0;
-    //获取开始时间
-    startTime = millis();
 
-    while(flag){
+    
+    while(req_flag){
+        //获取开始时间
+        startTime = millis();
+
 
         //发送请求
         Serial2.write(req_code,3);
+        delay(20);
+        Serial2.write(req_code,3);
+        
 
         //阻塞等待数据
         //如果超时，重新请求
@@ -5240,9 +9165,13 @@ void reqs_1(char* req_code){
 
         //数据解码
         //如果解码失败返回True，重新请求
-        flag = decodes_1();
+        req_flag = decodes_1();
 
     }
+
+    Serial2.flush();
+    UART_DATA_FLUSH();
+    Serial.println("reqs_1 done!");
 
     
 }
@@ -5256,6 +9185,8 @@ void decode_a(short i){
     UART_TARGET[4] = byte_decode(UART_DATABUF[i+6]);
     UART_TARGET[5] = byte_decode(UART_DATABUF[i+7]);
 
+
+    getCode();
 
 
     // Serial.println("---------");
@@ -5365,9 +9296,13 @@ void decode_b(int i){
 void decode_b(int i){
 
     // #bxxx$
+    Serial.println("local Saving plan.......");
     UART_PLAN[0] = byte_decode(UART_DATABUF[i+2]);
     UART_PLAN[1] = byte_decode(UART_DATABUF[i+3]);
     UART_PLAN[2] = byte_decode(UART_DATABUF[i+4]);
+    Serial.println(UART_PLAN[0]);
+    Serial.println(UART_PLAN[1]);
+    Serial.println(UART_PLAN[2]);
     Serial.println("local Saving plan.......");
 
 }
@@ -5462,62 +9397,60 @@ void acc(){
 }
 
 
-void stpInt(){
-    if(currentStates == stp){
+/*
+*传感器读取中断服务
+*/
+void IntService(){
+    Sensor_F_L = digitalRead(SensorPinF_1);
+    Sensor_F_R = digitalRead(SensorPinF_3);
 
-    
-    setSpdA1(0);
-    setSpdA2(0);
-    setSpdB1(0);
-    setSpdB2(0);
-    motorA1();
-    motorA2();
-    motorB1();
-    motorB2();
-    delay(2);
+    Sensor_B_L = digitalRead(SensorPinB_1);
+    Sensor_B_R = digitalRead(SensorPinB_3);
 
-    motorA1PNS(S);
-    motorA2PNS(S);
-    motorB1PNS(S);
-    motorB2PNS(S);
+    Sensor_L_L = digitalRead(SensorPinL_1);
+    Sensor_L_R = digitalRead(SensorPinL_3);
 
-    setSpdA1(targetSpd);
-    setSpdA2(targetSpd);
-    setSpdB1(targetSpd);
-    setSpdB2(targetSpd);
-    }
+    Sensor_R_L = digitalRead(SensorPinR_1);
+    Sensor_R_R = digitalRead(SensorPinR_3);
+
+    Sensor_F_M = digitalRead(SensorPinF_2);
+    Sensor_B_M = digitalRead(SensorPinB_2);
+
+    Sensor_L_M = digitalRead(SensorPinL_2);
+    Sensor_R_M = digitalRead(SensorPinR_2);
 
 }
+
 
 void count(){
 
 
-    detachInterrupt(2);
-    detachInterrupt(3);
-    detachInterrupt(4);
-    detachInterrupt(5);
+//    detachInterrupt(2);
+//    detachInterrupt(3);
+//    detachInterrupt(4);
+//    detachInterrupt(5);
 
     
 
-    setSpdA1(spdController_A1(spdA1Count,1));
+//    setSpdA1(spdController_A1(spdA1Count,1));
 //    Serial.println(spdA1Count);
 //    Serial.print(",");
 //    Serial.println(spdA1);
 
 
-    setSpdA2(spdController_A2(spdA2Count,2));
+//    setSpdA2(spdController_A2(spdA2Count,2));
 //
 //    Serial.println(spdA2Count);
 //    Serial.print(",");
 //    Serial.println(spdA2);
     
-    setSpdB1(spdController_B1(spdB1Count,2));
+//    setSpdB1(spdController_B1(spdB1Count,2));
 
 //    Serial.println(spdB1Count);
 //    Serial.print(",");
 //    Serial.println(spdB1);
 
-    setSpdB2(spdController_B2(spdB2Count,2));
+//    setSpdB2(spdController_B2(spdB2Count,2));
 
 //    Serial.println(spdB2Count);
 //    Serial.print(",");
@@ -5575,71 +9508,62 @@ char* int_char(int A){
 返 回 值 ： PIDInc:本次PID增量(+/-)
 */
 
-float spdController_A1(float ActualValue, short Mode)
-{
-
-      float PIDInc;  //增量
-  
-  
-        Ek_A1 = setPoint_A1 - ActualValue;
-        
-        PIDInc = (KP_A1 * Ek_A1) - (KI_A1 * Ek1_A1) + (KD_A1 * Ek2_A1);
-
-        Ek2_A1 = Ek1_A1;
-        Ek1_A1 = Ek_A1;  
-
-                            
-  
-  return PIDInc;
-}
-float spdController_A2(float ActualValue, short Mode)
-{
-
-      float PIDInc;  //增量
-  
-  
-        Ek_A2 = setPoint_A2 - ActualValue;
-        
-        PIDInc = (KP_A2 * Ek_A2) - (KI_A2 * Ek1_A2) + (KD_A2 * Ek2_A2);
-
-        Ek2_A2 = Ek1_A2;
-        Ek1_A2 = Ek_A2;  
-
-                            
-  
-  return PIDInc;
-}
-float spdController_B1(float ActualValue, short Mode)
-{
-
-      float PIDInc;  //增量
-  
-  
-        Ek_B1 = setPoint_B1 - ActualValue;
-        
-        PIDInc = (KP_B1 * Ek_B1) - (KI_B1 * Ek1_B1) + (KD_B1 * Ek2_B1);
-
-        Ek2_B1 = Ek1_B1;
-        Ek1_B1 = Ek_B1;  
-
-                            
-  
-  return PIDInc;
-}
-float spdController_B2(float ActualValue, short Mode)
-{
-
-      float PIDInc;  //增量
-  
-  
-        Ek_B2 = setPoint_B2 - ActualValue;
-        
-        PIDInc = (KP_B2 * Ek_B2) - (KI_B2 * Ek1_B2) + (KD_B2 * Ek2_B2);
-
-        Ek2_B2 = Ek1_B2;
-        Ek1_B2 = Ek_B2;  
-
-                            
-  
-  return PIDInc;
-}
+//float spdController_A1(float ActualValue, short Mode)
+//{
+//
+//      float PIDInc;  //增量
+//  
+//  
+//        Ek_A1 = setPoint_A1 - ActualValue;
+//        
+//        PIDInc = (KP_A1 * Ek_A1) - (KI_A1 * Ek1_A1) + (KD_A1 * Ek2_A1);
+//
+//        Ek2_A1 = Ek1_A1;
+//        Ek1_A1 = Ek_A1;  
+//
+//                            
+//  
+//  return PIDInc;
+//}
+//float spdController_A2(float ActualValue, short Mode)
+//{
+//
+//      float PIDInc;  //增量
+//  
+//  
+//        Ek_A2 = setPoint_A2 - ActualValue;
+//        
+//        PIDInc = (KP_A2 * Ek_A2) - (KI_A2 * Ek1_A2) + (KD_A2 * Ek2_A2);
+//
+//        Ek2_A2 = Ek1_A2;
+//        Ek1_A2 = Ek_A2;  
+//
+//                            
+//  
+//  return PIDInc;
+//}
+//float spdController_B1(float ActualValue, short Mode)
+//{
+//
+//      float PIDInc;  //增量
+//  
+//  
+//        Ek_B1 = setPoint_B1 - ActualValue;
+//        
+//        PIDInc = (KP_B1 * Ek_B1) - (KI_B1 * Ek1_B1) + (KD_B1 * Ek2_B1);
+//
+//
+//      float PIDInc;  //增量
+//  
+//  
+//        Ek_B2 = setPoint_B2 - ActualValue;
+//        
+//        PIDInc = (KP_B2 * Ek_B2) - (KI_B2 * Ek1_B2) + (KD_B2 * Ek2_B2);
+//
+//        Ek2_B2 = Ek1_B2;
+//        Ek1_B2 = Ek_B2;  
+//
+//                            
+//  
+//  return PIDInc;
+//}
