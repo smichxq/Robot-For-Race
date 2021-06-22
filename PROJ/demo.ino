@@ -413,8 +413,8 @@ bool mid_line_flag_B = false;
 void setup() {
     // delay(20);
     //显示屏初始化
-    LEDInit();
-    LEDCtrl("Spark",0,20,5,"krapS",0,90,5);
+   LEDInit();
+   LEDCtrl("Spark",0,20,5,"krapS",0,90,5);
     sensorInit();
     ledLightInit();
     ledLightCtrlOpen(true);
@@ -471,7 +471,7 @@ void loop()
     
     directions();
 
-    stateFix();
+     stateFix();
     
         
 //    }
@@ -1944,7 +1944,6 @@ void directions(){
             // Sensor_L_M = digitalRead(SensorPinF_2);
             // Sensor_R_M = digitalRead(SensorPinR_2);
 
-
             setSpdA1(40);
             setSpdA2(40);
             setSpdB1(40);
@@ -2484,6 +2483,11 @@ void directions(){
         setSpdA2(targetSpd);
         setSpdB1(targetSpd);
         setSpdB2(targetSpd);
+        //测试路径用，其他关掉
+        // if (stpFlag){
+        //     mp = mp->next;
+        //     stpFlag = false;
+        // }
 
 
         break;
@@ -3313,6 +3317,9 @@ void pathPlan()
             return;
             
             
+            return;
+            
+            
 
         }
     
@@ -3371,7 +3378,7 @@ mission* S_Code(){
   demo[0].A = true;
   demo[0].B = false;
   demo[0].C = false;
-  demo[0].D = true;
+  demo[0].D = false;
   demo[0].E = false;
   demo[0].M = false;
   demo[0].M_1 = false;
@@ -6790,6 +6797,169 @@ bool dynamicGrabPlan(){
                 mp->next->next->next->next = NULL;
 
 
+//动态规划213
+mission* dynamicPlan_213(){
+  mission demo[32];
+  //L
+  demo[0].A = true;
+  demo[0].B = false;
+  demo[0].C = false;
+  demo[0].D = false;
+  demo[0].E = false;
+  demo[0].M = false;
+  demo[0].M_1 = false;
+  demo[0].M_2 = false;
+  demo[0].M_3 = false;
+//L
+  demo[1].A = true;
+  demo[1].B = false;
+  demo[1].C = false;
+  demo[1].D = false;
+  demo[1].E = false;
+  demo[1].M = false;
+  demo[1].M_1 = false;
+  demo[1].M_2 = false;
+  demo[1].M_3 = false;
+//LM
+  demo[2].A = true;
+  demo[2].B = false;
+  demo[2].C = false;
+  demo[2].D = false;
+  demo[2].E = true;
+  demo[2].M = false;
+  demo[2].M_1 = false;
+  demo[2].M_2 = false;
+  demo[2].M_3 = false;
+//SRP粗加工
+  demo[3].A = false;
+  demo[3].B = false;
+  demo[3].C = true;
+  demo[3].D = false;
+  demo[3].E = false;
+  demo[3].M = true;
+  demo[3].M_1 = true;
+  demo[3].M_2 = false;
+  demo[3].M_3 = false;
+//RL
+  demo[4].A = true;
+  demo[4].B = true;
+  demo[4].C = false;
+  demo[4].D = true;
+  demo[4].E = false;
+  demo[4].M = false;
+  demo[4].M_1 = false;
+  demo[4].M_2 = false;
+  demo[4].M_3 = false;
+//SRP粗加工
+  demo[5].A = false;
+  demo[5].B = false;
+  demo[5].C = true;
+  demo[5].D = false;
+  demo[5].E = false;
+  demo[5].M = true;
+  demo[5].M_1 = true;
+  demo[5].M_2 = false;
+  demo[5].M_3 = false;
+  //L
+  demo[6].A = true;
+  demo[6].B = false;
+  demo[6].C = false;
+  demo[6].D = false;
+  demo[6].E = false;
+  demo[6].M = false;
+  demo[6].M_1 = false;
+  demo[6].M_2 = false;
+  demo[6].M_3 = false;
+//SRP粗加工
+  demo[7].A = false;
+  demo[7].B = false;
+  demo[7].C = true;
+  demo[7].D = false;
+  demo[7].E = false;
+  demo[7].M = true;
+  demo[7].M_1 = true;
+  demo[7].M_2 = false;
+  demo[7].M_3 = false;
+//RML
+  demo[8].A = true;
+  demo[8].B = true;
+  demo[8].C = false;
+  demo[8].D = false;
+  demo[8].E = true;
+  demo[8].M = false;
+  demo[8].M_1 = false;
+  demo[8].M_2 = false;
+  demo[8].M_3 = false;
+ //SRG
+  demo[9].A = false;
+  demo[9].B = false;
+  demo[9].C = true;
+  demo[9].D = false;
+  demo[9].E = false;
+  demo[9].M = true;
+  demo[9].M_1 = false;
+  demo[9].M_2 = true;
+  demo[9].M_3 = true;
+//RL
+  demo[10].A = true;
+  demo[10].B = true;
+  demo[10].C = false;
+  demo[10].D = true;
+  demo[10].E = false;
+  demo[10].M = false;
+  demo[10].M_1 = false;
+  demo[10].M_2 = false;
+  demo[10].M_3 = false;
+ //SRG
+  demo[11].A = false;
+  demo[11].B = false;
+  demo[11].C = true;
+  demo[11].D = false;
+  demo[11].E = false;
+  demo[11].M = true;
+  demo[11].M_1 = false;
+  demo[11].M_2 = true;
+  demo[11].M_3 = true;
+ //L
+  demo[12].A = true;
+  demo[12].B = false;
+  demo[12].C = false;
+  demo[12].D = false;
+  demo[12].E = false;
+  demo[12].M = false;
+  demo[12].M_1 = false;
+  demo[12].M_2 = false;
+  demo[12].M_3 = false;
+ //SRG
+  demo[13].A = false;
+  demo[13].B = false;
+  demo[13].C = true;
+  demo[13].D = false;
+  demo[13].E = false;
+  demo[13].M = true;
+  demo[13].M_1 = false;
+  demo[13].M_2 = true;
+  demo[13].M_3 = true;
+ //L
+  demo[14].A = true;
+  demo[14].B = false;
+  demo[14].C = false;
+  demo[14].D = false;
+  demo[14].E = false;
+  demo[14].M = false;
+  demo[14].M_1 = false;
+  demo[14].M_2 = false;
+  demo[14].M_3 = false;
+ //L
+  demo[15].A = true;
+  demo[15].B = false;
+  demo[15].C = false;
+  demo[15].D = false;
+  demo[15].E = false;
+  demo[15].M = false;
+  demo[15].M_1 = false;
+  demo[15].M_2 = false;
+  demo[15].M_3 = false;
 
                 mp->next->next->next->next = (mission*)malloc(sizeof(mission));
                 //Front-Line
