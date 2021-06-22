@@ -347,6 +347,7 @@ volatile short Sensor_L_M = 0;
 //前后 0.150
 //左右 0.1
 float FixFctr_GB = 0.40;
+// float FixFctr_GB = 0.10;
 float FixFctr_LR = 0.890;
 //偏移修正控制因子
 bool ctrlFlag = true;
@@ -2495,34 +2496,34 @@ void directions(){
 
 
 //到达位置抓取动作
-void ctrl_grab_servo(){
-    //处理接收到的x，y
-    UART_DELTA_PROC(UART_DELTA[0],UART_DELTA[1]);
-    //计算后输出 UART_DELTA_VALUE[0,1,2],对应 3，4，5
-    //控制机械臂移动
-    LobotServo servos[5];   //舵机ID位置结构数组
-    servos[0].ID = 2;       //2号舵机
-    servos[0].Position = 896;  //1400位置
+// void ctrl_grab_servo(){
+//     //处理接收到的x，y
+//     UART_DELTA_PROC(UART_DELTA[0],UART_DELTA[1]);
+//     //计算后输出 UART_DELTA_VALUE[0,1,2],对应 3，4，5
+//     //控制机械臂移动
+//     LobotServo servos[5];   //舵机ID位置结构数组
+//     servos[0].ID = 2;       //2号舵机
+//     servos[0].Position = 896;  //1400位置
 
-    servos[1].ID = 3;       //4号舵机
-    servos[1].Position = 1507;  //700位置
+//     servos[1].ID = 3;       //4号舵机
+//     servos[1].Position = 1507;  //700位置
 
-    servos[2].ID = 4;       //2号舵机
-    servos[2].Position = 1477;  //1400位置
+//     servos[2].ID = 4;       //2号舵机
+//     servos[2].Position = 1477;  //1400位置
 
-    servos[3].ID = 5;       //4号舵机
-    servos[3].Position = 546;  //700位置
+//     servos[3].ID = 5;       //4号舵机
+//     servos[3].Position = 546;  //700位置
 
-    servos[4].ID = 6;       //2号舵机
-    servos[4].Position = 2222;  //1400位置
+//     servos[4].ID = 6;       //2号舵机
+//     servos[4].Position = 2222;  //1400位置
 
-    myse.moveServos(servos,5,9000);
-    delay(10000);
-    //抓取
-    myse.moveServo(2,1863,500);
-    delay(1000);
+//     myse.moveServos(servos,5,9000);
+//     delay(10000);
+//     //抓取
+//     myse.moveServo(2,1863,500);
+//     delay(1000);
     
-} 
+// } 
 
 /*
 * 功能: 路径序列
@@ -2863,13 +2864,54 @@ void pathPlan()
     //停止
     if (mp->C)
     {
-        currentStates = stp;
-         micro_line_flag = false;
-         mid_line_flag = false;
+
+        //关机-延时停车
+        if(mp->A && mp->B){
+            motorA1PNS(N);
+            motorA2PNS(N);
+            motorB1PNS(N);
+            motorB2PNS(N);
+            setSpdA1(80);
+            setSpdA2(80);
+            setSpdB1(80);
+            setSpdB2(80);
+            delay(1000);
+
+            setSpdA1(0);
+            setSpdA2(0);
+            setSpdB1(0);
+            setSpdB2(0);
+
+            motorA1PNS(S);
+            motorA2PNS(S);
+            motorB1PNS(S);
+            motorB2PNS(S);
+
+            delay(999999);
+
+        }
+
+
+        //停车
+        else{
+            
+            currentStates = stp;
+            micro_line_flag = false;
+            
+            mid_line_flag = false;
+
+        }
+
+
+
+
         //停止后可能会一侧越线所以提前置位
         //  flagA = true;
 //        Serial.println("stp!");
     }
+
+    //关机
+    
 
 
 
@@ -3555,7 +3597,7 @@ mission* D_Obj2(){
 
 //放置路径-粗加工-半成品-抓取前一格子(放置增加了line模式)
 mission* dynamicPlan_123(){
-    mission demo[39];
+    mission demo[27];
     int i = 0;
 
    //Left
@@ -3838,8 +3880,8 @@ mission* dynamicPlan_123(){
     demo[i].M_3 = true;
 
     i++;
-    //Right
-    demo[i].A = true;
+    //Back
+    demo[i].A = false;
     demo[i].B = true;
     demo[i].C = false;
     demo[i].D = false;
@@ -3850,8 +3892,20 @@ mission* dynamicPlan_123(){
     demo[i].M_3 = false;
     i++;
 
-    //Right
+    //Left
     demo[i].A = true;
+    demo[i].B = false;
+    demo[i].C = false;
+    demo[i].D = false;
+    demo[i].E = false;
+    demo[i].M = false;
+    demo[i].M_1 = false;
+    demo[i].M_2 = false;
+    demo[i].M_3 = false;
+    i++;
+
+    //Back
+    demo[i].A = false;
     demo[i].B = true;
     demo[i].C = false;
     demo[i].D = false;
@@ -3862,43 +3916,31 @@ mission* dynamicPlan_123(){
     demo[i].M_3 = false;
     i++;
 
-    //Right
+    //Stp_shutdown
     demo[i].A = true;
     demo[i].B = true;
-    demo[i].C = false;
+    demo[i].C = true;
     demo[i].D = false;
     demo[i].E = false;
     demo[i].M = false;
     demo[i].M_1 = false;
     demo[i].M_2 = false;
     demo[i].M_3 = false;
-    i++;
+    // i++;
 
-    //Right
-    demo[i].A = true;
-    demo[i].B = true;
-    demo[i].C = false;
-    demo[i].D = false;
-    demo[i].E = false;
-    demo[i].M = false;
-    demo[i].M_1 = false;
-    demo[i].M_2 = false;
-    demo[i].M_3 = false;
-    i++;
+    //Stp
+    // demo[i].A = false;
+    // demo[i].B = false;
+    // demo[i].C = true;
+    // demo[i].D = false;
+    // demo[i].E = false;
+    // demo[i].M = false;
+    // demo[i].M_1 = false;
+    // demo[i].M_2 = false;
+    // demo[i].M_3 = false;
+    // i++;
 
-    //Right
-    demo[i].A = true;
-    demo[i].B = true;
-    demo[i].C = false;
-    demo[i].D = false;
-    demo[i].E = false;
-    demo[i].M = false;
-    demo[i].M_1 = false;
-    demo[i].M_2 = false;
-    demo[i].M_3 = false;
-    i++;
-
-
+/*
     //Front
     demo[i].A = false;
     demo[i].B = false;
@@ -4031,8 +4073,8 @@ mission* dynamicPlan_123(){
     demo[i].M_3 = false;
 
     // Serial.println("动态放置路径已规划");
-
-    return createMissionList(39,demo);
+*/
+    return createMissionList(27,demo);
 
     //RightX5
     //front详见onenote
